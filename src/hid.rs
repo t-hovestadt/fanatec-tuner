@@ -11,8 +11,8 @@ use windows_sys::Win32::{
         },
         HumanInterfaceDevice::{
             HidD_FreePreparsedData, HidD_GetAttributes, HidD_GetFeature, HidD_GetHidGuid,
-            HidD_GetPreparsedData, HidD_GetProductString, HidD_SetFeature, HidP_GetCaps,
-            HIDD_ATTRIBUTES, HIDP_CAPS, HIDP_STATUS_SUCCESS, PHIDP_PREPARSED_DATA,
+            HidD_GetPreparsedData, HidD_GetProductString, HidD_SetFeature, HidD_SetOutputReport,
+            HidP_GetCaps, HIDD_ATTRIBUTES, HIDP_CAPS, HIDP_STATUS_SUCCESS, PHIDP_PREPARSED_DATA,
         },
     },
     Foundation::{
@@ -477,4 +477,23 @@ pub fn get_feature(device: &FanatecDevice, buf: &mut [u8]) -> Result<(), HidErro
 #[cfg(not(windows))]
 pub fn get_feature(_device: &FanatecDevice, _buf: &mut [u8]) -> Result<(), HidError> {
     Err(HidError::ReadFailed(0))
+}
+
+/// HidD_SetOutputReport — sends an output report via the USB control endpoint
+/// (SET_REPORT, type=output). Equivalent to Linux hid_hw_request(HID_REQ_SET_REPORT).
+/// Byte 0 of buf must be the report ID.
+#[cfg(windows)]
+pub fn set_output_report(device: &FanatecDevice, buf: &[u8]) -> Result<(), HidError> {
+    unsafe {
+        if HidD_SetOutputReport(device.handle, buf.as_ptr().cast(), buf.len() as u32) != 0 {
+            Ok(())
+        } else {
+            Err(HidError::WriteFailed(GetLastError()))
+        }
+    }
+}
+
+#[cfg(not(windows))]
+pub fn set_output_report(_device: &FanatecDevice, _buf: &[u8]) -> Result<(), HidError> {
+    Err(HidError::WriteFailed(0))
 }

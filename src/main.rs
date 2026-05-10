@@ -375,7 +375,106 @@ fn cmd_diag() {
             }
         }
 
+        // [6] HidD_SetOutputReport (control endpoint, like Linux hid_hw_request)
+        print!("  [6] SetOutputReport 64 bytes [FF 03 04 ...] ... ");
+        match hid::set_output_report(dev, &req64) {
+            Err(e) => println!("FAILED ({})", e),
+            Ok(()) => {
+                println!("write OK");
+                diag_poll_read(dev, 64);
+            }
+        }
+
+        // [7] Toggle advanced mode (0xFF, 0x03, 0x06) → 500ms → tuning request
+        print!("  [7] AdvancedMode toggle [FF 03 06] + 500ms + request [FF 03 04] ... ");
+        let mut adv = [0u8; REPORT_SIZE];
+        adv[0] = 0xFF;
+        adv[1] = 0x03;
+        adv[2] = 0x06;
+        match hid::write_raw(dev, &adv) {
+            Err(e) => println!("toggle FAILED ({})", e),
+            Ok(()) => {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                match hid::write_raw(dev, &req64) {
+                    Err(e) => println!("request FAILED ({})", e),
+                    Ok(()) => {
+                        println!("writes OK");
+                        diag_poll_read(dev, 64);
+                    }
+                }
+            }
+        }
+
+        // [8] Read-only — no write, check for periodic tuning updates from the device
+        println!("  [8] Read-only (no write), 20 × 200ms ...");
+        diag_poll_read(dev, 64);
+
+        // [9] TUNING_MENU init sequence (from hid-ftecff.c lines 1184-1195), then request.
+        // Linux driver sends three 8-byte output reports on probe before any tuning request.
+        // We pad each to REPORT_SIZE bytes since Windows WriteFile needs the full report.
+        println!("  [9] TUNING_MENU init [FF 08 01 FF]+[FF 08 02]+[FF 03 02] → request ...");
+        let init_cmds: [[u8; REPORT_SIZE]; 3] = {
+            let mut a = [[0u8; REPORT_SIZE]; 3];
+            // cmd A: 0xFF 0x08 0x01 0xFF 0x00 ...
+            a[0][0] = 0xFF;
+            a[0][1] = 0x08;
+            a[0][2] = 0x01;
+            a[0][3] = 0xFF;
+            // cmd B: 0xFF 0x08 0x02 0x00 ...
+            a[1][0] = 0xFF;
+            a[1][1] = 0x08;
+            a[1][2] = 0x02;
+            // cmd C: 0xFF 0x03 0x02 0x00 ...
+            a[2][0] = 0xFF;
+            a[2][1] = 0x03;
+            a[2][2] = 0x02;
+            a
+        };
+        let mut init_ok = true;
+        for (i, cmd) in init_cmds.iter().enumerate() {
+            if let Err(e) = hid::write_raw(dev, cmd) {
+                println!("    init cmd {} FAILED ({})", i + 1, e);
+                init_ok = false;
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        if init_ok {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            match hid::write_raw(dev, &req64) {
+                Err(e) => println!("    request FAILED ({})", e),
+                Ok(()) => diag_poll_read(dev, 64),
+            }
+        }
+
         println!();
+    }
+}
+
+fn diag_poll_read(dev: &hid::FanatecDevice, read_len: usize) {
+    let mut rbuf = vec![0u8; read_len];
+    let mut got_tuning = false;
+    for _ in 0..20 {
+        match hid::read_raw(dev, &mut rbuf, 200) {
+            Ok(()) => {
+                let is_tuning = rbuf[0] == 0xFF && rbuf.get(1) == Some(&0x03);
+                if is_tuning {
+                    println!("      → TUNING: {}", hex_str(&rbuf[..read_len.min(24)]));
+                    got_tuning = true;
+                    break;
+                } else {
+                    println!("      other: {}", hex_str(&rbuf[..read_len.min(8)]));
+                }
+            }
+            Err(hid::HidError::Timeout) => {}
+            Err(e) => {
+                println!("      read error: {}", e);
+                break;
+            }
+        }
+    }
+    if !got_tuning {
+        println!("      → no tuning report (20 × 200ms)");
     }
 }
 
