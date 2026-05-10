@@ -115,13 +115,20 @@ fn do_apply(dev: &hid::FanatecDevice, prof: &PwsProfile) -> bool {
     // Diagnostic: print first 10 bytes to verify byte 2 = 0x00 (CMD_WRITE_PARAM).
     eprintln!("  [dbg] write[0..10]: {}", hex_str(&write_buf[..10]));
 
+    // Toggle opens a write window on the DD+. Send immediately before the write.
+    let wake = build_wake_report();
+    if let Err(e) = hid::write_report(dev, &wake) {
+        eprintln!("  error: wake failed: {}", e);
+        return false;
+    }
+    std::thread::sleep(Duration::from_millis(500));
+
     if let Err(e) = hid::write_report(dev, &write_buf) {
         eprintln!("  error: write failed: {}", e);
         return false;
     }
+    std::thread::sleep(Duration::from_millis(200));
 
-    // Advanced mode stays on after a write — just send a bare request for readback.
-    std::thread::sleep(Duration::from_millis(500));
     let request = build_request_report();
     if let Err(e) = hid::write_report(dev, &request) {
         eprintln!("  warning: could not request readback: {}", e);
@@ -138,8 +145,8 @@ fn do_apply(dev: &hid::FanatecDevice, prof: &PwsProfile) -> bool {
     true
 }
 
-/// Returns the current device tuning state.  Advanced mode is already ON from
-/// the probe at startup — sends only a values request, never the toggle.
+/// Returns the current device tuning state via a values request.
+/// Falls back to a wake+retry if the device doesn't respond.
 fn get_current_state(dev: &hid::FanatecDevice) -> Option<[u8; REPORT_SIZE]> {
     let request = build_request_report();
     if hid::write_report(dev, &request).is_ok() {

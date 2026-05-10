@@ -127,14 +127,21 @@ fn cmd_apply(pws_path: &std::path::Path) {
 
     let params = prof.write_params();
     let write_buf = build_full_write_report(&before_buf, &params);
+
+    // Toggle opens a write window on the DD+. Send immediately before the write.
+    let wake = build_wake_report();
+    if let Err(e) = hid::write_report(dev, &wake) {
+        eprintln!("error: wake failed: {}", e);
+        std::process::exit(1);
+    }
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
     if let Err(e) = hid::write_report(dev, &write_buf) {
         eprintln!("error: write failed: {}", e);
         std::process::exit(1);
     }
+    std::thread::sleep(std::time::Duration::from_millis(200));
 
-    // Re-read to get the after snapshot.
-    // No wake toggle here — advanced mode stays on after the write.
-    std::thread::sleep(std::time::Duration::from_millis(500));
     let request = build_request_report();
     if let Err(e) = hid::write_report(dev, &request) {
         eprintln!("warning: could not request readback: {}", e);
