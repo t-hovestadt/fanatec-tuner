@@ -28,6 +28,8 @@ enum Command {
     List,
     /// Scan the profiles directory and show game/car mapping (verbose)
     Scan,
+    /// Dump HID caps and probe write/read strategies on all collections
+    Diag,
 }
 
 fn main() {
@@ -51,6 +53,7 @@ fn main() {
         Some(Command::Apply { path }) => cmd_apply(&path),
         Some(Command::List) => cmd_list(&cfg, false),
         Some(Command::Scan) => cmd_list(&cfg, true),
+        Some(Command::Diag) => cmd_diag(),
     }
 }
 
@@ -307,6 +310,121 @@ fn collection_label(path: &str) -> String {
         return path[start..end.min(start + 5)].to_string();
     }
     "collection".to_string()
+}
+
+// ---------------------------------------------------------------------------
+// diag
+// ---------------------------------------------------------------------------
+
+fn cmd_diag() {
+    let devices = open_devices();
+    let req64 = build_request_report();
+    // 65-byte variant: 0x00 report-ID prefix + 64-byte payload
+    let mut req65 = [0u8; REPORT_SIZE + 1];
+    req65[1..].copy_from_slice(&req64);
+
+    for dev in &devices {
+        let col = collection_label(&dev.device_path);
+        println!(
+            "--- {} ({}, PID 0x{:04X}) ---",
+            col, dev.product_name, dev.product_id
+        );
+
+        match hid::get_hid_caps(dev) {
+            Some(c) => println!(
+                "  caps: in={}  out={}  feat={}",
+                c.input_report_len, c.output_report_len, c.feature_report_len
+            ),
+            None => println!("  caps: unavailable"),
+        }
+
+        // [1] WriteFile 64 bytes + ReadFile 64 bytes (current production approach)
+        diag_write_read(dev, &req64, "WriteFile 64 bytes [FF 03 04 ...]", 64);
+
+        // [2] WriteFile 65 bytes (0x00 report-ID prefix) + ReadFile 64 bytes
+        diag_write_read(dev, &req65, "WriteFile 65 bytes [00 FF 03 04 ...]", 64);
+
+        // [3] WriteFile 65 bytes + ReadFile 65 bytes
+        diag_write_read(dev, &req65, "WriteFile 65 bytes / ReadFile 65 bytes", 65);
+
+        // [4] HidD_SetFeature 64 bytes (ID=0xFF) + HidD_GetFeature 64 bytes
+        print!("  [4] SetFeature 64 bytes [FF 03 04 ...] ... ");
+        match hid::set_feature(dev, &req64) {
+            Err(e) => println!("FAILED ({})", e),
+            Ok(()) => {
+                println!("OK");
+                let mut fbuf = [0xFFu8; REPORT_SIZE]; // byte 0 = desired report ID
+                match hid::get_feature(dev, &mut fbuf) {
+                    Err(e) => println!("    GetFeature FAILED ({})", e),
+                    Ok(()) => println!("    GetFeature: {}", hex_str(&fbuf[..16])),
+                }
+            }
+        }
+
+        // [5] HidD_SetFeature 65 bytes (ID=0x00) + HidD_GetFeature 65 bytes
+        print!("  [5] SetFeature 65 bytes [00 FF 03 04 ...] ... ");
+        match hid::set_feature(dev, &req65) {
+            Err(e) => println!("FAILED ({})", e),
+            Ok(()) => {
+                println!("OK");
+                let mut fbuf = [0u8; REPORT_SIZE + 1];
+                match hid::get_feature(dev, &mut fbuf) {
+                    Err(e) => println!("    GetFeature FAILED ({})", e),
+                    Ok(()) => println!("    GetFeature: {}", hex_str(&fbuf[..17])),
+                }
+            }
+        }
+
+        println!();
+    }
+}
+
+fn diag_write_read(dev: &hid::FanatecDevice, wbuf: &[u8], label: &str, read_len: usize) {
+    let attempt = match read_len {
+        64 if wbuf.len() == 64 => "[1]",
+        64 if wbuf.len() == 65 => "[2]",
+        _ => "[3]",
+    };
+    print!("  {} {} ... ", attempt, label);
+    match hid::write_raw(dev, wbuf) {
+        Err(e) => {
+            println!("WRITE FAILED ({})", e);
+            return;
+        }
+        Ok(()) => println!("write OK"),
+    }
+    let mut rbuf = vec![0u8; read_len];
+    let mut got_tuning = false;
+    for _ in 0..20 {
+        match hid::read_raw(dev, &mut rbuf, 200) {
+            Ok(()) => {
+                let marker = rbuf[0] == 0xFF && rbuf.get(1) == Some(&0x03);
+                if marker {
+                    println!("      → TUNING: {}", hex_str(&rbuf[..read_len.min(24)]));
+                    got_tuning = true;
+                    break;
+                } else {
+                    println!("      other: {}", hex_str(&rbuf[..read_len.min(8)]));
+                }
+            }
+            Err(hid::HidError::Timeout) => {}
+            Err(e) => {
+                println!("      read error: {}", e);
+                break;
+            }
+        }
+    }
+    if !got_tuning {
+        println!("      → no tuning report (20 × 200ms)");
+    }
+}
+
+fn hex_str(bytes: &[u8]) -> String {
+    bytes
+        .iter()
+        .map(|b| format!("{:02X}", b))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 // ---------------------------------------------------------------------------

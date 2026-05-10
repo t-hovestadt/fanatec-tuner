@@ -10,7 +10,9 @@ use windows_sys::Win32::{
             SP_DEVICE_INTERFACE_DATA, SP_DEVICE_INTERFACE_DETAIL_DATA_W,
         },
         HumanInterfaceDevice::{
-            HidD_GetAttributes, HidD_GetHidGuid, HidD_GetProductString, HIDD_ATTRIBUTES,
+            HidD_FreePreparsedData, HidD_GetAttributes, HidD_GetFeature, HidD_GetHidGuid,
+            HidD_GetPreparsedData, HidD_GetProductString, HidD_SetFeature, HidP_GetCaps,
+            HIDD_ATTRIBUTES, HIDP_CAPS, HIDP_STATUS_SUCCESS, PHIDP_PREPARSED_DATA,
         },
     },
     Foundation::{
@@ -26,6 +28,12 @@ use windows_sys::Win32::{
 
 pub const FANATEC_VID: u16 = 0x0EB7;
 pub const REPORT_SIZE: usize = 64;
+
+pub struct HidCaps {
+    pub input_report_len: u16,
+    pub output_report_len: u16,
+    pub feature_report_len: u16,
+}
 
 pub struct FanatecDevice {
     pub handle: HANDLE,
@@ -320,4 +328,153 @@ impl Drop for EventGuard {
     fn drop(&mut self) {
         unsafe { CloseHandle(self.0) };
     }
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostic helpers
+// ---------------------------------------------------------------------------
+
+/// Returns the HID report byte lengths for a device, or None if unavailable.
+#[cfg(windows)]
+pub fn get_hid_caps(device: &FanatecDevice) -> Option<HidCaps> {
+    unsafe {
+        let mut preparsed: PHIDP_PREPARSED_DATA = 0;
+        if HidD_GetPreparsedData(device.handle, &mut preparsed) == 0 {
+            return None;
+        }
+        let mut caps: HIDP_CAPS = std::mem::zeroed();
+        let status = HidP_GetCaps(preparsed, &mut caps);
+        HidD_FreePreparsedData(preparsed);
+        if status != HIDP_STATUS_SUCCESS {
+            return None;
+        }
+        Some(HidCaps {
+            input_report_len: caps.InputReportByteLength,
+            output_report_len: caps.OutputReportByteLength,
+            feature_report_len: caps.FeatureReportByteLength,
+        })
+    }
+}
+
+#[cfg(not(windows))]
+pub fn get_hid_caps(_device: &FanatecDevice) -> Option<HidCaps> {
+    None
+}
+
+/// WriteFile with an arbitrary-length byte slice (used by the diag command).
+#[cfg(windows)]
+pub fn write_raw(device: &FanatecDevice, buf: &[u8]) -> Result<(), HidError> {
+    unsafe {
+        let mut overlapped: OVERLAPPED = std::mem::zeroed();
+        let mut written = 0u32;
+        let ok = WriteFile(
+            device.handle,
+            buf.as_ptr(),
+            buf.len() as u32,
+            &mut written,
+            &mut overlapped,
+        );
+        if ok == 0 {
+            let err = GetLastError();
+            const ERROR_IO_PENDING: u32 = 997;
+            if err != ERROR_IO_PENDING {
+                return Err(HidError::WriteFailed(err));
+            }
+            if GetOverlappedResult(device.handle, &overlapped, &mut written, 1) == 0 {
+                return Err(HidError::WriteFailed(GetLastError()));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[cfg(not(windows))]
+pub fn write_raw(_device: &FanatecDevice, _buf: &[u8]) -> Result<(), HidError> {
+    Err(HidError::WriteFailed(0))
+}
+
+/// ReadFile with an arbitrary-length buffer (used by the diag command).
+#[cfg(windows)]
+pub fn read_raw(device: &FanatecDevice, buf: &mut [u8], timeout_ms: u32) -> Result<(), HidError> {
+    unsafe {
+        let event = CreateEventW(std::ptr::null(), 1, 0, std::ptr::null());
+        if event == 0 {
+            return Err(HidError::ReadFailed(GetLastError()));
+        }
+        let _guard = EventGuard(event);
+        let mut overlapped: OVERLAPPED = std::mem::zeroed();
+        overlapped.hEvent = event;
+        let mut read = 0u32;
+        let ok = ReadFile(
+            device.handle,
+            buf.as_mut_ptr(),
+            buf.len() as u32,
+            &mut read,
+            &mut overlapped,
+        );
+        if ok == 0 {
+            let err = GetLastError();
+            const ERROR_IO_PENDING: u32 = 997;
+            if err != ERROR_IO_PENDING {
+                return Err(HidError::ReadFailed(err));
+            }
+        }
+        const WAIT_TIMEOUT: u32 = 0x0000_0102;
+        const WAIT_OBJECT_0: u32 = 0x0000_0000;
+        let wait = WaitForSingleObject(event, timeout_ms);
+        if wait == WAIT_TIMEOUT {
+            CancelIo(device.handle);
+            return Err(HidError::Timeout);
+        }
+        if wait != WAIT_OBJECT_0 {
+            return Err(HidError::ReadFailed(GetLastError()));
+        }
+        if GetOverlappedResult(device.handle, &overlapped, &mut read, 0) == 0 {
+            return Err(HidError::ReadFailed(GetLastError()));
+        }
+        Ok(())
+    }
+}
+
+#[cfg(not(windows))]
+pub fn read_raw(
+    _device: &FanatecDevice,
+    _buf: &mut [u8],
+    _timeout_ms: u32,
+) -> Result<(), HidError> {
+    Err(HidError::ReadFailed(0))
+}
+
+/// HidD_SetFeature — sends a feature report (byte 0 = report ID).
+#[cfg(windows)]
+pub fn set_feature(device: &FanatecDevice, buf: &[u8]) -> Result<(), HidError> {
+    unsafe {
+        if HidD_SetFeature(device.handle, buf.as_ptr().cast(), buf.len() as u32) != 0 {
+            Ok(())
+        } else {
+            Err(HidError::WriteFailed(GetLastError()))
+        }
+    }
+}
+
+#[cfg(not(windows))]
+pub fn set_feature(_device: &FanatecDevice, _buf: &[u8]) -> Result<(), HidError> {
+    Err(HidError::WriteFailed(0))
+}
+
+/// HidD_GetFeature — receives a feature report (byte 0 = report ID).
+#[cfg(windows)]
+pub fn get_feature(device: &FanatecDevice, buf: &mut [u8]) -> Result<(), HidError> {
+    unsafe {
+        if HidD_GetFeature(device.handle, buf.as_mut_ptr().cast(), buf.len() as u32) != 0 {
+            Ok(())
+        } else {
+            Err(HidError::ReadFailed(GetLastError()))
+        }
+    }
+}
+
+#[cfg(not(windows))]
+pub fn get_feature(_device: &FanatecDevice, _buf: &mut [u8]) -> Result<(), HidError> {
+    Err(HidError::ReadFailed(0))
 }
