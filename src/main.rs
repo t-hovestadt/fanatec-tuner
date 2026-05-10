@@ -247,8 +247,11 @@ fn open_devices() -> Vec<hid::FanatecDevice> {
 /// Tries each collection in turn. Returns device index + raw 64-byte tuning
 /// report from the first collection that accepts a write and responds.
 ///
-/// Sends the advanced-mode wake command (0x06) first and waits 500 ms —
-/// the DD+ silently ignores tuning requests without this prior toggle.
+/// The DD+ advanced-mode toggle (CMD 0x06) is a flip, not an enable:
+/// each call inverts the current state. We may enter this function with
+/// advanced mode already ON (from a prior run) or OFF (fresh session).
+/// Strategy: toggle once → request → if no response, toggle again → request.
+/// This converges in ≤2 toggles regardless of starting state.
 fn probe_tuning_collection(devices: &[hid::FanatecDevice]) -> Option<(usize, [u8; REPORT_SIZE])> {
     let wake = build_wake_report();
     let request = build_request_report();
@@ -256,39 +259,41 @@ fn probe_tuning_collection(devices: &[hid::FanatecDevice]) -> Option<(usize, [u8
         let col = collection_label(&dev.device_path);
         print!("  Probing {} ... ", col);
 
-        // Wake the tuning subsystem; device ignores 0x04 without this.
-        if let Err(e) = hid::write_report(dev, &wake) {
-            println!("wake failed ({})", e);
-            continue;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(500));
-
-        if let Err(e) = hid::write_report(dev, &request) {
-            println!("request failed ({})", e);
-            continue;
-        }
-
-        let mut buf = [0u8; REPORT_SIZE];
-        let mut got_tuning = false;
-        for _ in 0..10 {
-            match hid::read_report(dev, &mut buf, 200) {
-                Ok(()) if is_tuning_report(&buf) => {
-                    got_tuning = true;
-                    break;
-                }
-                Ok(()) => {}
-                Err(e) => {
-                    println!("read failed ({})", e);
-                    break;
-                }
-            }
-        }
-
-        if got_tuning {
+        if let Some(buf) = try_wake_and_read(dev, &wake, &request) {
             println!("OK");
             return Some((idx, buf));
-        } else {
-            println!("no tuning response");
+        }
+        // First toggle may have turned advanced mode OFF; flip it back.
+        print!("(retry) ");
+        if let Some(buf) = try_wake_and_read(dev, &wake, &request) {
+            println!("OK");
+            return Some((idx, buf));
+        }
+        println!("no tuning response");
+    }
+    None
+}
+
+/// Sends wake toggle + 500 ms + request, then polls for a tuning report.
+/// Returns the raw buffer on success, None on timeout / error.
+fn try_wake_and_read(
+    dev: &hid::FanatecDevice,
+    wake: &[u8; REPORT_SIZE],
+    request: &[u8; REPORT_SIZE],
+) -> Option<[u8; REPORT_SIZE]> {
+    if hid::write_report(dev, wake).is_err() {
+        return None;
+    }
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    if hid::write_report(dev, request).is_err() {
+        return None;
+    }
+    let mut buf = [0u8; REPORT_SIZE];
+    for _ in 0..10 {
+        match hid::read_report(dev, &mut buf, 200) {
+            Ok(()) if is_tuning_report(&buf) => return Some(buf),
+            Ok(()) => {}
+            Err(_) => break,
         }
     }
     None

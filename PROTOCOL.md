@@ -185,22 +185,28 @@ Stores saved tuning profiles and app preferences.
 ## Wake sequence (required before tuning requests)
 
 The DD+ (and likely other DD-family bases) **silently ignores** tuning
-requests (`0x04`) unless an advanced-mode toggle command is sent first.
-
-Send this 64-byte report before any tuning read or write session:
+requests (`0x04`) unless it is in advanced mode.
 
 ```
 [0xFF, 0x03, 0x06, 0x00 × 61]   ← CMD_TOGGLE_ADVANCED
 ```
 
-Then wait **~500 ms** before sending the `0x04` request. Without this
-wake-up the device will never respond, regardless of how many times you
-retry. One wake per process lifetime is sufficient — the device stays
-responsive for the remainder of the session.
+**Important: 0x06 is a TOGGLE, not an enable.** Each call flips the
+current state (ON → OFF or OFF → ON). The device starts in an unknown
+state relative to a new process, so a single unconditional toggle is
+unreliable across consecutive runs.
 
-Root cause: the Linux driver (`hid-ftecff.c`) sends this toggle (and two
-other init reports) on device probe, so the Fanatec App pre-wakes the
-device at startup. Our tool must do the same when connecting cold.
+**Robust approach — double-toggle with probe:**
+1. Send 0x06 toggle + 500 ms + 0x04 request → poll for response
+2. If response received → advanced mode is now ON, proceed
+3. If no response → we toggled it OFF (it was already ON); send 0x06
+   again + 500 ms + 0x04 request → this always succeeds
+
+This converges in ≤ 2 toggles regardless of starting state.
+
+Root cause: the Linux driver (`hid-ftecff.c`) sends this toggle on device
+probe, so the Fanatec App pre-wakes the device at startup. Our tool must
+do the same when connecting cold, but must not assume the starting state.
 
 ---
 
