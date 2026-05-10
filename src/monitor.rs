@@ -1,13 +1,12 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use crate::config;
 use crate::games::{self, CarDetected};
 use crate::hid::{self, REPORT_SIZE};
 use crate::profile::PwsProfile;
 use crate::tuning::{
-    build_full_write_report, build_request_report, build_wake_report, is_tuning_report,
-    parse_tuning_report,
+    build_full_write_report, build_request_report, is_tuning_report, parse_tuning_report,
 };
-use crate::{config, profile};
 
 pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
     if profiles.is_empty() {
@@ -17,19 +16,20 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
         println!("{} profile(s) loaded", profiles.len());
     }
 
+    // Open device handles once. probe_tuning_collection sends the wake toggle
+    // (CMD_TOGGLE_ADVANCED 0x06) to bring the base into advanced mode.
     let devices = crate::open_devices();
-    let (idx, _) = match crate::probe_tuning_collection(&devices) {
-        Some(r) => r,
+    let mut dev_idx = match crate::probe_tuning_collection(&devices) {
+        Some((idx, _)) => idx,
         None => {
             eprintln!("error: no HID collection responded to the tuning request.");
             std::process::exit(1);
         }
     };
-    let dev = &devices[idx];
-    let col = crate::collection_label(&dev.device_path);
+    let col = crate::collection_label(&devices[dev_idx].device_path);
     println!(
         "Using {}  ({}, PID 0x{:04X})",
-        col, dev.product_name, dev.product_id
+        col, devices[dev_idx].product_name, devices[dev_idx].product_id
     );
     println!("Monitoring — press Ctrl-C to stop\n");
 
@@ -52,7 +52,20 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
                         None => println!("no matching profile"),
                         Some(prof) => {
                             println!("applying {}", prof.path.display());
-                            do_apply(dev, prof);
+                            if !do_apply(&devices[dev_idx], prof) {
+                                // Write failed — advanced mode may have been lost.
+                                // Re-probe with the existing handles (sends toggle to recover).
+                                eprintln!("  re-probing after write failure…");
+                                match crate::probe_tuning_collection(&devices) {
+                                    Some((idx, _)) => {
+                                        dev_idx = idx;
+                                        do_apply(&devices[dev_idx], prof);
+                                    }
+                                    None => {
+                                        eprintln!("  error: device not responding after re-probe")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -64,12 +77,15 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
     }
 }
 
-fn do_apply(dev: &hid::FanatecDevice, prof: &profile::PwsProfile) {
+/// Reads the current device state, applies the profile, then reads back and
+/// prints a diff. Returns false only if the write itself failed (the caller
+/// should re-probe in that case); readback failures are non-fatal.
+fn do_apply(dev: &hid::FanatecDevice, prof: &PwsProfile) -> bool {
     let before_buf = match get_current_state(dev) {
         Some(b) => b,
         None => {
             eprintln!("  error: could not read device state before apply");
-            return;
+            return false;
         }
     };
     let before = parse_tuning_report(&before_buf);
@@ -79,14 +95,15 @@ fn do_apply(dev: &hid::FanatecDevice, prof: &profile::PwsProfile) {
 
     if let Err(e) = hid::write_report(dev, &write_buf) {
         eprintln!("  error: write failed: {}", e);
-        return;
+        return false;
     }
 
+    // Advanced mode stays on after a write — just send a bare request for readback.
     std::thread::sleep(Duration::from_millis(500));
     let request = build_request_report();
     if let Err(e) = hid::write_report(dev, &request) {
         eprintln!("  warning: could not request readback: {}", e);
-        return;
+        return true; // write succeeded; readback failure is not a write error
     }
 
     match read_tuning_report(dev) {
@@ -96,21 +113,13 @@ fn do_apply(dev: &hid::FanatecDevice, prof: &profile::PwsProfile) {
         }
         None => eprintln!("  warning: could not read back tuning values after apply"),
     }
+    true
 }
 
-/// Requests current tuning values from the device. Falls back to wake+retry
-/// if the device doesn't respond (e.g. advanced mode was reset).
+/// Returns the current device tuning state. Advanced mode is already ON from
+/// the probe at startup — sends only a values request, never the toggle.
 fn get_current_state(dev: &hid::FanatecDevice) -> Option<[u8; REPORT_SIZE]> {
     let request = build_request_report();
-    if hid::write_report(dev, &request).is_ok() {
-        if let Some(buf) = read_tuning_report(dev) {
-            return Some(buf);
-        }
-    }
-    // Advanced mode may have been reset — wake and retry.
-    let wake = build_wake_report();
-    hid::write_report(dev, &wake).ok()?;
-    std::thread::sleep(Duration::from_millis(500));
     hid::write_report(dev, &request).ok()?;
     read_tuning_report(dev)
 }
