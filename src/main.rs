@@ -244,46 +244,83 @@ fn open_devices() -> Vec<hid::FanatecDevice> {
     devices
 }
 
+/// Working collection path cached within the process lifetime.
+static TUNING_COLLECTION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
 /// Tries each collection in turn. Returns device index + raw 64-byte tuning
-/// report from the first collection that accepts a write and responds.
+/// report from the first collection that accepts writes and responds.
 ///
-/// The DD+ advanced-mode toggle (CMD 0x06) is a flip, not an enable:
-/// each call inverts the current state. We may enter this function with
-/// advanced mode already ON (from a prior run) or OFF (fresh session).
-/// Strategy: toggle once → request → if no response, toggle again → request.
-/// This converges in ≤2 toggles regardless of starting state.
+/// Collections that reject the first write (e.g. col01 → ERROR_INVALID_FUNCTION)
+/// are skipped immediately — no point waking a non-tuning endpoint.
+///
+/// The DD+ advanced-mode toggle (CMD 0x06) is a flip, not an enable, so the
+/// device may already be in advanced mode when we arrive. Three attempts:
+///   Attempt 1: wake → 500 ms → request+poll
+///   Attempt 2: wake → 500 ms → request+poll   (corrects if attempt 1 toggled it off)
+///   Attempt 3: 1000 ms extra → wake → 500 ms → request+poll  (longer settle)
 fn probe_tuning_collection(devices: &[hid::FanatecDevice]) -> Option<(usize, [u8; REPORT_SIZE])> {
     let wake = build_wake_report();
     let request = build_request_report();
-    for (idx, dev) in devices.iter().enumerate() {
+
+    // If we already found the working collection this process, put it first.
+    let cached = TUNING_COLLECTION.get().cloned();
+
+    let sorted: Vec<(usize, &hid::FanatecDevice)> = {
+        let mut v: Vec<(usize, &hid::FanatecDevice)> = devices.iter().enumerate().collect();
+        if let Some(ref path) = cached {
+            v.sort_by_key(|(_, d)| if &d.device_path == path { 0 } else { 1 });
+        }
+        v
+    };
+
+    for (idx, dev) in sorted {
         let col = collection_label(&dev.device_path);
         print!("  Probing {} ... ", col);
 
-        if let Some(buf) = try_wake_and_read(dev, &wake, &request) {
+        // Bail immediately if the collection refuses writes.
+        if hid::write_report(dev, &wake).is_err() {
+            println!("skip (write rejected)");
+            continue;
+        }
+
+        // Attempt 1: wake already sent above; wait + request + poll.
+        if let Some(buf) = request_and_poll(dev, &request) {
             println!("OK");
+            let _ = TUNING_COLLECTION.set(dev.device_path.clone());
             return Some((idx, buf));
         }
-        // First toggle may have turned advanced mode OFF; flip it back.
-        print!("(retry) ");
-        if let Some(buf) = try_wake_and_read(dev, &wake, &request) {
-            println!("OK");
-            return Some((idx, buf));
+
+        // Attempt 2: toggle again (corrects if attempt 1 landed us in wrong state).
+        print!("(retry 2) ");
+        if hid::write_report(dev, &wake).is_ok() {
+            if let Some(buf) = request_and_poll(dev, &request) {
+                println!("OK");
+                let _ = TUNING_COLLECTION.set(dev.device_path.clone());
+                return Some((idx, buf));
+            }
         }
+
+        // Attempt 3: give the base 1 s extra to settle then try once more.
+        print!("(retry 3) ");
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+        if hid::write_report(dev, &wake).is_ok() {
+            if let Some(buf) = request_and_poll(dev, &request) {
+                println!("OK");
+                let _ = TUNING_COLLECTION.set(dev.device_path.clone());
+                return Some((idx, buf));
+            }
+        }
+
         println!("no tuning response");
     }
     None
 }
 
-/// Sends wake toggle + 500 ms + request, then polls for a tuning report.
-/// Returns the raw buffer on success, None on timeout / error.
-fn try_wake_and_read(
+/// Sends a request report, then polls for a tuning reply (up to 10 × 200 ms).
+fn request_and_poll(
     dev: &hid::FanatecDevice,
-    wake: &[u8; REPORT_SIZE],
     request: &[u8; REPORT_SIZE],
 ) -> Option<[u8; REPORT_SIZE]> {
-    if hid::write_report(dev, wake).is_err() {
-        return None;
-    }
     std::thread::sleep(std::time::Duration::from_millis(500));
     if hid::write_report(dev, request).is_err() {
         return None;
