@@ -199,10 +199,9 @@ Stores saved tuning profiles and app preferences.
 
 ---
 
-## Wake sequence (required before tuning requests)
+## Wake sequence (required before reads AND writes)
 
-The DD+ (and likely other DD-family bases) **silently ignores** tuning
-requests (`0x04`) unless it is in advanced mode.
+The DD+ requires CMD `0x06` (toggle) before **both reads and writes**.
 
 ```
 [0xFF, 0x03, 0x06, 0x00 × 61]   ← CMD_TOGGLE_ADVANCED
@@ -213,13 +212,30 @@ current state (ON → OFF or OFF → ON). The device starts in an unknown
 state relative to a new process, so a single unconditional toggle is
 unreliable across consecutive runs.
 
-**Robust approach — double-toggle with probe:**
+**For reads (startup probe) — double-toggle with probe:**
 1. Send 0x06 toggle + 500 ms + 0x04 request → poll for response
 2. If response received → advanced mode is now ON, proceed
 3. If no response → we toggled it OFF (it was already ON); send 0x06
    again + 500 ms + 0x04 request → this always succeeds
 
 This converges in ≤ 2 toggles regardless of starting state.
+
+**For writes — one unconditional toggle before every write:**
+
+The toggle opens a write window for exactly one write cycle. The window
+expires after the write completes — a second write requires another toggle.
+Sending CMD `0x00` (write) without a preceding toggle results in no change
+(readback returns the same values). Do not attempt to reuse the write window
+across multiple writes.
+
+```
+1. Send 0x06 toggle
+2. Sleep 500 ms
+3. Send CMD 0x00 (write report)
+```
+
+The Fanatec App likely issues a fresh toggle before every user-initiated
+tuning change for the same reason.
 
 Root cause: the Linux driver (`hid-ftecff.c`) sends this toggle on device
 probe, so the Fanatec App pre-wakes the device at startup. Our tool must
@@ -249,13 +265,16 @@ buffer with CMD=0x00, copy the current device state shifted by one byte,
 overlay the new values, and send once.
 
 ```
-1. Wake device (step 2–3 above) + read current values (steps 4–7)
+1. Read current values (see Typical read flow above) → store as base
 2. Build write buffer from the read snapshot:
    buf[0]    = 0xFF, buf[1] = 0x03, buf[2] = 0x00 (CMD_WRITE_PARAM)
    buf[3..63] = base[2..62]  (shift read state right by 1)
    buf[addr+1] = encoded_value  (for each param to update)
-3. WriteFile(buf)  — single write, all params at once
-4. Re-send 0x04 request and read back to verify (no second wake needed)
+3. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61])  ← toggle opens write window
+4. Sleep 500 ms
+5. WriteFile(write_buf)  — single write, all params at once
+6. Sleep 200 ms
+7. Re-send 0x04 request and read back to verify
 ```
 
 **Note:** sending each parameter in its own report (one at a time) does not
