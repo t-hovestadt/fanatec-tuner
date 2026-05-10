@@ -5,23 +5,23 @@ use std::os::windows::ffi::OsStringExt;
 use windows_sys::Win32::{
     Devices::{
         DeviceAndDriverInstallation::{
-            SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInterfaces,
-            SetupDiGetClassDevsW, SetupDiGetDeviceInterfaceDetailW,
-            DIGCF_DEVICEINTERFACE, DIGCF_PRESENT, SP_DEVICE_INTERFACE_DATA,
-            SP_DEVICE_INTERFACE_DETAIL_DATA_W,
+            SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInterfaces, SetupDiGetClassDevsW,
+            SetupDiGetDeviceInterfaceDetailW, DIGCF_DEVICEINTERFACE, DIGCF_PRESENT,
+            SP_DEVICE_INTERFACE_DATA, SP_DEVICE_INTERFACE_DETAIL_DATA_W,
         },
         HumanInterfaceDevice::{
-            HidD_GetAttributes, HidD_GetHidGuid, HidD_GetProductString,
-            HIDD_ATTRIBUTES,
+            HidD_GetAttributes, HidD_GetHidGuid, HidD_GetProductString, HIDD_ATTRIBUTES,
         },
     },
-    Foundation::{CloseHandle, GetLastError, GENERIC_READ, GENERIC_WRITE, HANDLE, INVALID_HANDLE_VALUE},
-    Storage::FileSystem::{
-        CreateFileW, ReadFile, WriteFile, FILE_FLAG_OVERLAPPED, FILE_SHARE_READ,
-        FILE_SHARE_WRITE, OPEN_EXISTING,
+    Foundation::{
+        CloseHandle, GetLastError, GENERIC_READ, GENERIC_WRITE, HANDLE, INVALID_HANDLE_VALUE,
     },
-    System::IO::{CancelIo, GetOverlappedResult, OVERLAPPED},
+    Storage::FileSystem::{
+        CreateFileW, ReadFile, WriteFile, FILE_FLAG_OVERLAPPED, FILE_SHARE_READ, FILE_SHARE_WRITE,
+        OPEN_EXISTING,
+    },
     System::Threading::{CreateEventW, WaitForSingleObject},
+    System::IO::{CancelIo, GetOverlappedResult, OVERLAPPED},
 };
 
 pub const FANATEC_VID: u16 = 0x0EB7;
@@ -111,7 +111,7 @@ pub fn enumerate_fanatec() -> Result<Vec<FanatecDevice>, HidError> {
             let mut required = 0u32;
             SetupDiGetDeviceInterfaceDetailW(
                 dev_info,
-                &mut iface_data,
+                &iface_data,
                 std::ptr::null_mut(),
                 0,
                 &mut required,
@@ -128,7 +128,7 @@ pub fn enumerate_fanatec() -> Result<Vec<FanatecDevice>, HidError> {
 
             let ok = SetupDiGetDeviceInterfaceDetailW(
                 dev_info,
-                &mut iface_data,
+                &iface_data,
                 detail,
                 required,
                 std::ptr::null_mut(),
@@ -146,7 +146,11 @@ pub fn enumerate_fanatec() -> Result<Vec<FanatecDevice>, HidError> {
             let path_str = path_os.to_string_lossy().into_owned();
 
             // Open with shared access so FanaLab can coexist
-            let path_wide: Vec<u16> = path_slice.iter().copied().chain(std::iter::once(0)).collect();
+            let path_wide: Vec<u16> = path_slice
+                .iter()
+                .copied()
+                .chain(std::iter::once(0))
+                .collect();
             let handle = CreateFileW(
                 path_wide.as_ptr(),
                 GENERIC_READ | GENERIC_WRITE,

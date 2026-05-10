@@ -105,7 +105,7 @@ pub struct TuningProfile {
 /// falling back to the small-range formula otherwise.
 pub fn decode_sen(raw: u8) -> Option<u32> {
     // For bases with max_range > 1090 (e.g. DD, DD+, DD1, DD2):
-    if raw >= 0x8a && raw < 0xed {
+    if (0x8a..0xed).contains(&raw) {
         // Mid range: 90° to 1070°
         Some(90 + 10 * (raw - 0x8a) as u32)
     } else if raw >= 0xed {

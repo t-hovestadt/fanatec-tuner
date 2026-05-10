@@ -17,11 +17,11 @@ Fanatec steering wheel bases. Derived from the open-source
 | Podium DD1 | 0x0EB7 | 0x0006 |
 | Podium DD2 | 0x0EB7 | 0x0007 |
 | CSL DD / CSL DD Pro | 0x0EB7 | 0x0020 |
+| **ClubSport DD+** (2024) | 0x0EB7 | **0x0020** |
 | CSR Elite | 0x0EB7 | 0x0011 |
 | Porsche 911 Turbo S | 0x0EB7 | 0x0197 |
 
-The **ClubSport DD+** (2024) is not yet in the hid-fanatecff source tree.
-Running `fanatec-tuner` will print its actual PID so you can add it above.
+The ClubSport DD+ shares PID 0x0020 with the CSL DD — confirmed from hardware.
 
 All tuning-capable bases share the same report format; device capabilities
 differ only in which parameters are populated (see Parameter table).
@@ -144,6 +144,41 @@ CreateFileW(
 (`FILE_SHARE_NONE`). If FanaLab is running, `CreateFileW` will return
 `INVALID_HANDLE_VALUE` with `ERROR_SHARING_VIOLATION (32)`. Close FanaLab
 before running this tool.
+
+---
+
+## HID collections (PID 0x0020 — CSL DD / ClubSport DD+)
+
+Windows exposes PID 0x0020 as **three separate HID collections**:
+
+| Path suffix | Role | Tuning? |
+|---|---|---|
+| `&col01` | Wheel input (axes, buttons) | No — `WriteFile` returns `ERROR_INVALID_FUNCTION (1)` |
+| `col02` | Tuning endpoint | **Yes** — accepts 64-byte output reports |
+| `col03` | Unknown (possibly LED / display) | TBD |
+
+`enumerate_fanatec()` returns all three. The correct one for tuning must be
+found by probing: attempt `WriteFile` and move to the next collection on
+`ERROR_INVALID_FUNCTION`. The successful collection is typically col02 but
+the probe loop is order-independent.
+
+---
+
+## Windows software locations
+
+**Fanatec SDK DLL:**
+```
+C:\Program Files\Fanatec\Fanatec Wheel\fw\EndorFanatecSdk64_VS2019.dll
+```
+This DLL implements the high-level Fanatec API (property get/set, LED
+control). It communicates with the base over the same HID collections
+described above. Useful reference for future reverse-engineering.
+
+**Fanatec App config:**
+```
+%APPDATA%\com.example\Fanatec\
+```
+Stores saved tuning profiles and app preferences.
 
 ---
 
