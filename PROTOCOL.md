@@ -244,10 +244,19 @@ do the same when connecting cold, but must not assume the starting state.
 
 ## Typical write flow
 
+The device processes **one parameter per write report**. Send a separate
+64-byte report for each parameter; all bytes other than the header and the
+single parameter byte must be zero.
+
 ```
 1. Wake device (step 2–3 above) + read current values (steps 4–7)
-2. Build 64-byte buffer: [0xFF, 0x03, 0x00, 0x00, ...]
-3. Set buf[addr] = encoded_value
-4. WriteFile(buf)  — repeat for each parameter
-5. Re-send 0x04 request and read back to verify (no second wake needed)
+2. For each parameter to write:
+   a. Build buffer: [0xFF, 0x03, 0x00, 0x00 × 61]
+   b. Set buf[addr + 1] = encoded_value  (one parameter only)
+   c. WriteFile(buf)
+   d. Sleep ~50 ms  (device needs time to process each write)
+3. Re-send 0x04 request and read back to verify (no second wake needed)
 ```
+
+Setting multiple parameter bytes in one report does not work — the device
+either ignores the extra bytes or only processes one of them.
