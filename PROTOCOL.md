@@ -182,24 +182,49 @@ Stores saved tuning profiles and app preferences.
 
 ---
 
+## Wake sequence (required before tuning requests)
+
+The DD+ (and likely other DD-family bases) **silently ignores** tuning
+requests (`0x04`) unless an advanced-mode toggle command is sent first.
+
+Send this 64-byte report before any tuning read or write session:
+
+```
+[0xFF, 0x03, 0x06, 0x00 × 61]   ← CMD_TOGGLE_ADVANCED
+```
+
+Then wait **~500 ms** before sending the `0x04` request. Without this
+wake-up the device will never respond, regardless of how many times you
+retry. One wake per process lifetime is sufficient — the device stays
+responsive for the remainder of the session.
+
+Root cause: the Linux driver (`hid-ftecff.c`) sends this toggle (and two
+other init reports) on device probe, so the Fanatec App pre-wakes the
+device at startup. Our tool must do the same when connecting cold.
+
+---
+
 ## Typical read flow
 
 ```
 1. Open device (shared, overlapped)
-2. WriteFile([0xFF, 0x03, 0x04, 0x00 × 61])   ← request values
-3. ReadFile(buf, 64, overlapped)  with WaitForSingleObject(event, 1000ms)
-4. Check buf[0]==0xFF && buf[1]==0x03          ← tuning report?
-   If not, loop back to step 3 (other HID traffic may arrive first)
-5. Decode parameters from buf
+2. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61])   ← wake / advanced-mode toggle
+3. Sleep 500 ms
+4. WriteFile([0xFF, 0x03, 0x04, 0x00 × 61])   ← request values
+5. ReadFile(buf, 64, overlapped)  with WaitForSingleObject(event, 200ms)
+6. Check buf[0]==0xFF && buf[1]==0x03          ← tuning report?
+   If not, loop back to step 5 (other HID traffic may arrive first)
+7. Decode parameters from buf
 ```
 
 ---
 
-## Typical write flow (future)
+## Typical write flow
 
 ```
-1. Build 64-byte buffer: [0xFF, 0x03, 0x00, 0x00, ...]
-2. Set buf[addr] = encoded_value
-3. WriteFile(buf)
-4. Optionally request values again to verify
+1. Wake device (step 2–3 above) + read current values (steps 4–7)
+2. Build 64-byte buffer: [0xFF, 0x03, 0x00, 0x00, ...]
+3. Set buf[addr] = encoded_value
+4. WriteFile(buf)  — repeat for each parameter
+5. Re-send 0x04 request and read back to verify (no second wake needed)
 ```

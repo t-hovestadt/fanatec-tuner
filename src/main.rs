@@ -5,7 +5,10 @@ mod tuning;
 
 use clap::{Parser, Subcommand};
 use hid::REPORT_SIZE;
-use tuning::{build_request_report, build_write_report, is_tuning_report, parse_tuning_report};
+use tuning::{
+    build_request_report, build_wake_report, build_write_report, is_tuning_report,
+    parse_tuning_report,
+};
 
 #[derive(Parser)]
 #[command(
@@ -74,10 +77,7 @@ fn cmd_read() {
         }
         None => {
             eprintln!("error: no HID collection responded to the tuning request.");
-            eprintln!(
-                "Tried all {} collection(s). Close FanaLab and retry.",
-                devices.len()
-            );
+            eprintln!("Tried all {} collection(s).", devices.len());
             std::process::exit(1);
         }
     }
@@ -230,7 +230,6 @@ fn open_devices() -> Vec<hid::FanatecDevice> {
     if devices.is_empty() {
         eprintln!("No Fanatec devices found (VID 0x0EB7).");
         eprintln!("Check that the device is connected and powered on.");
-        eprintln!("If FanaLab is running with exclusive access, close it and retry.");
         std::process::exit(1);
     }
 
@@ -247,14 +246,25 @@ fn open_devices() -> Vec<hid::FanatecDevice> {
 
 /// Tries each collection in turn. Returns device index + raw 64-byte tuning
 /// report from the first collection that accepts a write and responds.
+///
+/// Sends the advanced-mode wake command (0x06) first and waits 500 ms —
+/// the DD+ silently ignores tuning requests without this prior toggle.
 fn probe_tuning_collection(devices: &[hid::FanatecDevice]) -> Option<(usize, [u8; REPORT_SIZE])> {
+    let wake = build_wake_report();
     let request = build_request_report();
     for (idx, dev) in devices.iter().enumerate() {
         let col = collection_label(&dev.device_path);
         print!("  Probing {} ... ", col);
 
+        // Wake the tuning subsystem; device ignores 0x04 without this.
+        if let Err(e) = hid::write_report(dev, &wake) {
+            println!("wake failed ({})", e);
+            continue;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(500));
+
         if let Err(e) = hid::write_report(dev, &request) {
-            println!("write failed ({})", e);
+            println!("request failed ({})", e);
             continue;
         }
 

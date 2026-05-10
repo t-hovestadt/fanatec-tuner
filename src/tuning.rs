@@ -135,6 +135,18 @@ pub fn parse_tuning_report(buf: &[u8; REPORT_SIZE]) -> TuningProfile {
     }
 }
 
+/// Builds a 64-byte advanced-mode toggle report (CMD 0x06).
+///
+/// The DD+ ignores tuning requests until this command is sent once per
+/// session. Send it, wait ~500 ms, then send build_request_report().
+pub fn build_wake_report() -> [u8; REPORT_SIZE] {
+    let mut buf = [0u8; REPORT_SIZE];
+    buf[0] = REPORT_ID;
+    buf[1] = TUNING_MARKER;
+    buf[2] = CMD_TOGGLE_ADVANCED;
+    buf
+}
+
 /// Builds a 64-byte report that requests the current tuning values.
 pub fn build_request_report() -> [u8; REPORT_SIZE] {
     let mut buf = [0u8; REPORT_SIZE];
