@@ -66,7 +66,24 @@ the user adjusts a knob on the base.
 
 ## Parameter byte addresses
 
-Addresses are the wire byte index within the 64-byte report.
+Addresses are the wire byte index within the 64-byte **read response**.
+
+**Write direction offset:** in the write format every parameter sits at
+`addr + 1`. This is because byte 2 carries the CMD_WRITE_PARAM command
+(0x00), shifting all parameters one position to the right.
+
+```
+Read response:  [0xFF][0x03][SLOT][SEN][FF][SHO]...
+Write command:  [0xFF][0x03][0x00][SLOT][SEN][FF][SHO]...
+                              ↑ cmd
+```
+
+The driver stores received reports at `ftec_tuning_data[1..]` (shifted by
+one) precisely so the retained buffer can be used directly as the write
+buffer. Confirmed: `hid-ftecff-tuning.c:85`
+```c
+drv_data->tuning.ftec_tuning_data[addr + 1] = val;
+```
 
 Conversions:
 - **noop** — display value = wire byte (no scaling)

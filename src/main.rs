@@ -6,7 +6,7 @@ mod tuning;
 use clap::{Parser, Subcommand};
 use hid::REPORT_SIZE;
 use tuning::{
-    build_request_report, build_wake_report, build_write_report, is_tuning_report,
+    build_full_write_report, build_request_report, build_wake_report, is_tuning_report,
     parse_tuning_report,
 };
 
@@ -120,9 +120,10 @@ fn cmd_apply(pws_path: &std::path::Path) {
 
     let before = parse_tuning_report(&before_buf);
 
-    // Write order: everything except FF first, then FF last.
-    // This avoids a sudden force spike if FF is currently 0.
-    let writes: &[(usize, u8)] = &[
+    // Build one write report: current device state as base, all profile params
+    // applied at addr+1 (write direction offset — byte 2 carries the command).
+    // FF goes last in the params list so it's the final override in the buffer.
+    let params: &[(usize, u8)] = &[
         (tuning::ADDR_SEN, prof.sen),
         (tuning::ADDR_FFS, prof.ffs),
         (tuning::ADDR_NDP, prof.ndp),
@@ -139,22 +140,21 @@ fn cmd_apply(pws_path: &std::path::Path) {
         (tuning::ADDR_FUL, prof.ful),
         (tuning::ADDR_DRI, prof.dri),
         (tuning::ADDR_ACP, prof.acp),
-        (tuning::ADDR_FF, prof.ff), // FF last
+        (tuning::ADDR_FF, prof.ff),
     ];
-
-    for &(addr, wire_val) in writes {
-        let report = build_write_report(addr, wire_val);
-        if let Err(e) = hid::write_report(dev, &report) {
-            eprintln!("error: write to offset 0x{:02X} failed: {}", addr, e);
-            std::process::exit(1);
-        }
+    let write_buf = build_full_write_report(&before_buf, params);
+    if let Err(e) = hid::write_report(dev, &write_buf) {
+        eprintln!("error: write failed: {}", e);
+        std::process::exit(1);
     }
 
-    // Re-read to get the after snapshot
+    // Re-read to get the after snapshot.
+    // No wake toggle here — advanced mode stays on after the write.
+    std::thread::sleep(std::time::Duration::from_millis(500));
     let request = build_request_report();
     if let Err(e) = hid::write_report(dev, &request) {
-        eprintln!("error: could not request readback: {}", e);
-        std::process::exit(1);
+        eprintln!("warning: could not request readback: {}", e);
+        return;
     }
     let after_buf = match read_tuning_report(dev) {
         Some(b) => b,
