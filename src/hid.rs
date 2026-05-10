@@ -6,7 +6,7 @@ use windows_sys::Win32::{
     Devices::{
         DeviceAndDriverInstallation::{
             SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInterfaces, SetupDiGetClassDevsW,
-            SetupDiGetDeviceInterfaceDetailW, DIGCF_DEVICEINTERFACE, DIGCF_PRESENT,
+            SetupDiGetDeviceInterfaceDetailW, DIGCF_DEVICEINTERFACE, DIGCF_PRESENT, HDEVINFO,
             SP_DEVICE_INTERFACE_DATA, SP_DEVICE_INTERFACE_DETAIL_DATA_W,
         },
         HumanInterfaceDevice::{
@@ -86,7 +86,7 @@ pub fn enumerate_fanatec() -> Result<Vec<FanatecDevice>, HidError> {
             0,
             DIGCF_PRESENT | DIGCF_DEVICEINTERFACE,
         );
-        if dev_info == INVALID_HANDLE_VALUE as _ {
+        if dev_info == INVALID_HANDLE_VALUE as HDEVINFO {
             return Err(HidError::EnumerationFailed(GetLastError()));
         }
 
