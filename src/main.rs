@@ -8,7 +8,7 @@ mod tuning;
 use clap::{Parser, Subcommand};
 use hid::REPORT_SIZE;
 use tuning::{
-    build_request_report, build_single_write_report, build_wake_report, is_tuning_report,
+    build_full_write_report, build_request_report, build_wake_report, is_tuning_report,
     parse_tuning_report,
 };
 
@@ -126,13 +126,10 @@ fn cmd_apply(pws_path: &std::path::Path) {
     let before = parse_tuning_report(&before_buf);
 
     let params = prof.write_params();
-    for &(addr, value) in &params {
-        let report = build_single_write_report(addr, value);
-        if let Err(e) = hid::write_report(dev, &report) {
-            eprintln!("error: write failed for addr 0x{:02x}: {}", addr, e);
-            std::process::exit(1);
-        }
-        std::thread::sleep(std::time::Duration::from_millis(50));
+    let write_buf = build_full_write_report(&before_buf, &params);
+    if let Err(e) = hid::write_report(dev, &write_buf) {
+        eprintln!("error: write failed: {}", e);
+        std::process::exit(1);
     }
 
     // Re-read to get the after snapshot.

@@ -167,14 +167,40 @@ pub fn build_select_slot_report(slot: u8) -> [u8; REPORT_SIZE] {
     buf
 }
 
-/// Builds a 64-byte write report for a single parameter.
+/// Builds a write report applying `params` to a snapshot of the current device
+/// state (`base`, the last received read response).
 ///
-/// All bytes are zero except the fixed header and the one parameter byte.
-/// The device processes exactly one parameter per write report.
+/// The DD+ expects ALL parameters in a single report with CMD=0x00.  Sending
+/// parameters one at a time (each in its own report) does not work — readback
+/// shows no change.
 ///
-/// **Write direction offset:** byte 2 carries CMD_WRITE_PARAM (0x00), so the
+/// **Write direction offset:** byte 2 carries CMD_WRITE_PARAM (0x00), so every
 /// parameter sits at `addr + 1` — one position to the right of its read-response
 /// address.  Driver source: `ftec_tuning_data[addr + 1] = val` (hid-ftecff-tuning.c:85).
+///
+/// All bytes not covered by `params` retain the current device-state value from
+/// `base`, preserving any undocumented parameters.
+pub fn build_full_write_report(
+    base: &[u8; REPORT_SIZE],
+    params: &[(usize, u8)],
+) -> [u8; REPORT_SIZE] {
+    let mut buf = [0u8; REPORT_SIZE];
+    buf[0] = REPORT_ID;
+    buf[1] = TUNING_MARKER;
+    buf[2] = CMD_WRITE_PARAM;
+    // Shift received state: read position i → write position i+1
+    buf[3..REPORT_SIZE].copy_from_slice(&base[2..REPORT_SIZE - 1]);
+    // Override with new values at write positions
+    for &(addr, val) in params {
+        buf[addr + 1] = val;
+    }
+    buf
+}
+
+/// Builds a 64-byte write report for a single parameter.
+/// `addr` is one of the ADDR_* constants. `value` is the wire-encoded byte.
+/// Note: single-param writes do not work on the DD+ — use build_full_write_report.
+#[allow(dead_code)]
 pub fn build_single_write_report(addr: usize, value: u8) -> [u8; REPORT_SIZE] {
     let mut buf = [0u8; REPORT_SIZE];
     buf[0] = REPORT_ID;

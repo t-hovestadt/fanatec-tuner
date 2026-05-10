@@ -5,7 +5,7 @@ use crate::games::{self, CarDetected};
 use crate::hid::{self, REPORT_SIZE};
 use crate::profile::PwsProfile;
 use crate::tuning::{
-    build_request_report, build_single_write_report, build_wake_report, is_tuning_report,
+    build_full_write_report, build_request_report, build_wake_report, is_tuning_report,
     parse_tuning_report,
 };
 
@@ -110,25 +110,15 @@ fn do_apply(dev: &hid::FanatecDevice, prof: &PwsProfile) -> bool {
     let before = parse_tuning_report(&before_buf);
 
     let params = prof.write_params();
+    let write_buf = build_full_write_report(&before_buf, &params);
 
-    // Diagnostic: verify byte 2 = 0x00 (CMD_WRITE_PARAM) on the first report.
-    if let Some(&(addr, value)) = params.first() {
-        let first = build_single_write_report(addr, value);
-        eprintln!(
-            "  [dbg] write[0..10] (first param): {}",
-            hex_str(&first[..10])
-        );
-    }
+    // Diagnostic: print first 10 bytes to verify byte 2 = 0x00 (CMD_WRITE_PARAM).
+    eprintln!("  [dbg] write[0..10]: {}", hex_str(&write_buf[..10]));
 
-    for &(addr, value) in &params {
-        let report = build_single_write_report(addr, value);
-        if let Err(e) = hid::write_report(dev, &report) {
-            eprintln!("  error: write failed for addr 0x{:02x}: {}", addr, e);
-            return false;
-        }
-        std::thread::sleep(Duration::from_millis(50));
+    if let Err(e) = hid::write_report(dev, &write_buf) {
+        eprintln!("  error: write failed: {}", e);
+        return false;
     }
-    eprintln!("  [dbg] {} params written", params.len());
 
     // Advanced mode stays on after a write — just send a bare request for readback.
     std::thread::sleep(Duration::from_millis(500));

@@ -244,19 +244,19 @@ do the same when connecting cold, but must not assume the starting state.
 
 ## Typical write flow
 
-The device processes **one parameter per write report**. Send a separate
-64-byte report for each parameter; all bytes other than the header and the
-single parameter byte must be zero.
+The DD+ expects **all parameters in a single report**. Build one 64-byte
+buffer with CMD=0x00, copy the current device state shifted by one byte,
+overlay the new values, and send once.
 
 ```
 1. Wake device (step 2–3 above) + read current values (steps 4–7)
-2. For each parameter to write:
-   a. Build buffer: [0xFF, 0x03, 0x00, 0x00 × 61]
-   b. Set buf[addr + 1] = encoded_value  (one parameter only)
-   c. WriteFile(buf)
-   d. Sleep ~50 ms  (device needs time to process each write)
-3. Re-send 0x04 request and read back to verify (no second wake needed)
+2. Build write buffer from the read snapshot:
+   buf[0]    = 0xFF, buf[1] = 0x03, buf[2] = 0x00 (CMD_WRITE_PARAM)
+   buf[3..63] = base[2..62]  (shift read state right by 1)
+   buf[addr+1] = encoded_value  (for each param to update)
+3. WriteFile(buf)  — single write, all params at once
+4. Re-send 0x04 request and read back to verify (no second wake needed)
 ```
 
-Setting multiple parameter bytes in one report does not work — the device
-either ignores the extra bytes or only processes one of them.
+**Note:** sending each parameter in its own report (one at a time) does not
+work on the DD+ — readback shows no change.
