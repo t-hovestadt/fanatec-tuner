@@ -1,5 +1,7 @@
 mod config;
+mod games;
 mod hid;
+mod monitor;
 mod profile;
 mod tuning;
 
@@ -33,6 +35,8 @@ enum Command {
     Scan,
     /// Dump HID caps and probe write/read strategies on all collections
     Diag,
+    /// Watch for game/car changes and auto-apply matching profiles
+    Monitor,
 }
 
 fn main() {
@@ -57,6 +61,7 @@ fn main() {
         Some(Command::List) => cmd_list(&cfg, false),
         Some(Command::Scan) => cmd_list(&cfg, true),
         Some(Command::Diag) => cmd_diag(),
+        Some(Command::Monitor) => cmd_monitor(&cfg),
     }
 }
 
@@ -120,29 +125,8 @@ fn cmd_apply(pws_path: &std::path::Path) {
 
     let before = parse_tuning_report(&before_buf);
 
-    // Build one write report: current device state as base, all profile params
-    // applied at addr+1 (write direction offset — byte 2 carries the command).
-    // FF goes last in the params list so it's the final override in the buffer.
-    let params: &[(usize, u8)] = &[
-        (tuning::ADDR_SEN, prof.sen),
-        (tuning::ADDR_FFS, prof.ffs),
-        (tuning::ADDR_NDP, prof.ndp),
-        (tuning::ADDR_NFR, prof.nfr),
-        (tuning::ADDR_NIN, prof.nin),
-        (tuning::ADDR_INT, prof.int_),
-        (tuning::ADDR_FEI, prof.fei),
-        (tuning::ADDR_FOR, profile::PwsProfile::wire_div10(prof.for_)),
-        (tuning::ADDR_SPR, profile::PwsProfile::wire_div10(prof.spr)),
-        (tuning::ADDR_DPR, profile::PwsProfile::wire_div10(prof.dpr)),
-        (tuning::ADDR_BLI, prof.bli),
-        (tuning::ADDR_SHO, profile::PwsProfile::wire_div10(prof.sho)),
-        (tuning::ADDR_BRF, profile::PwsProfile::wire_div10(prof.brf)),
-        (tuning::ADDR_FUL, prof.ful),
-        (tuning::ADDR_DRI, prof.dri),
-        (tuning::ADDR_ACP, prof.acp),
-        (tuning::ADDR_FF, prof.ff),
-    ];
-    let write_buf = build_full_write_report(&before_buf, params);
+    let params = prof.write_params();
+    let write_buf = build_full_write_report(&before_buf, &params);
     if let Err(e) = hid::write_report(dev, &write_buf) {
         eprintln!("error: write failed: {}", e);
         std::process::exit(1);
@@ -166,6 +150,16 @@ fn cmd_apply(pws_path: &std::path::Path) {
     let after = parse_tuning_report(&after_buf);
 
     print_diff(&before, &after);
+}
+
+// ---------------------------------------------------------------------------
+// monitor — poll game shared memory and auto-apply profiles
+// ---------------------------------------------------------------------------
+
+fn cmd_monitor(cfg: &config::Config) {
+    let profiles_dir = cfg.profiles.path.as_deref().unwrap_or("profiles");
+    let profiles = profile::scan_profiles(std::path::Path::new(profiles_dir));
+    monitor::run_monitor(cfg, &profiles);
 }
 
 // ---------------------------------------------------------------------------
@@ -218,7 +212,7 @@ fn cmd_list(cfg: &config::Config, verbose: bool) {
 // shared helpers
 // ---------------------------------------------------------------------------
 
-fn open_devices() -> Vec<hid::FanatecDevice> {
+pub(crate) fn open_devices() -> Vec<hid::FanatecDevice> {
     let devices = match hid::enumerate_fanatec() {
         Ok(d) => d,
         Err(e) => {
@@ -258,7 +252,9 @@ static TUNING_COLLECTION: std::sync::OnceLock<String> = std::sync::OnceLock::new
 ///   Attempt 1: wake → 500 ms → request+poll
 ///   Attempt 2: wake → 500 ms → request+poll   (corrects if attempt 1 toggled it off)
 ///   Attempt 3: 1000 ms extra → wake → 500 ms → request+poll  (longer settle)
-fn probe_tuning_collection(devices: &[hid::FanatecDevice]) -> Option<(usize, [u8; REPORT_SIZE])> {
+pub(crate) fn probe_tuning_collection(
+    devices: &[hid::FanatecDevice],
+) -> Option<(usize, [u8; REPORT_SIZE])> {
     let wake = build_wake_report();
     let request = build_request_report();
 
@@ -351,7 +347,7 @@ fn read_tuning_report(dev: &hid::FanatecDevice) -> Option<[u8; REPORT_SIZE]> {
 
 /// Extracts the "col01" / "col02" label from a HID device path.
 /// Paths look like: \\?\hid#vid_0eb7&pid_0020&col02#6&...
-fn collection_label(path: &str) -> String {
+pub(crate) fn collection_label(path: &str) -> String {
     let lower = path.to_lowercase();
     if let Some(amp) = lower.find("&col") {
         let start = amp + 1; // skip '&', point at 'c'
@@ -627,7 +623,7 @@ fn print_profile(p: &tuning::TuningProfile) {
     println!("DRI:   {}", p.dri);
 }
 
-fn print_diff(before: &tuning::TuningProfile, after: &tuning::TuningProfile) {
+pub(crate) fn print_diff(before: &tuning::TuningProfile, after: &tuning::TuningProfile) {
     println!("Parameter  Before → After");
     println!("-----------+--------------");
 

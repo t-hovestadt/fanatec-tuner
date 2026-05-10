@@ -35,6 +35,32 @@ impl PwsProfile {
     pub fn wire_div10(display: u8) -> u8 {
         display / 10
     }
+
+    /// Returns all profile parameters as `(addr, wire_value)` pairs ready for
+    /// `build_full_write_report`. Addresses are the read-response byte positions;
+    /// the write offset (+1) is applied inside `build_full_write_report`.
+    pub fn write_params(&self) -> Vec<(usize, u8)> {
+        use crate::tuning;
+        vec![
+            (tuning::ADDR_SEN, self.sen),
+            (tuning::ADDR_FFS, self.ffs),
+            (tuning::ADDR_NDP, self.ndp),
+            (tuning::ADDR_NFR, self.nfr),
+            (tuning::ADDR_NIN, self.nin),
+            (tuning::ADDR_INT, self.int_),
+            (tuning::ADDR_FEI, self.fei),
+            (tuning::ADDR_FOR, Self::wire_div10(self.for_)),
+            (tuning::ADDR_SPR, Self::wire_div10(self.spr)),
+            (tuning::ADDR_DPR, Self::wire_div10(self.dpr)),
+            (tuning::ADDR_BLI, self.bli),
+            (tuning::ADDR_SHO, Self::wire_div10(self.sho)),
+            (tuning::ADDR_BRF, Self::wire_div10(self.brf)),
+            (tuning::ADDR_FUL, self.ful),
+            (tuning::ADDR_DRI, self.dri),
+            (tuning::ADDR_ACP, self.acp),
+            (tuning::ADDR_FF, self.ff),
+        ]
+    }
 }
 
 /// Extracts `(game, car)` from a .pws filename stem.

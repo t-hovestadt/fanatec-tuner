@@ -2,3 +2,6 @@
 # Directory containing .pws profile files. Can be absolute or relative to the exe.
 path = "profiles"
 base = "CS DD+"
+
+[monitor]
+scan_interval = 3

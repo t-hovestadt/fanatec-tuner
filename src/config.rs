@@ -5,6 +5,20 @@ use std::path::Path;
 pub struct Config {
     #[serde(default)]
     pub profiles: ProfilesConfig,
+    #[serde(default)]
+    pub monitor: MonitorConfig,
+}
+
+#[derive(Deserialize, Default)]
+pub struct MonitorConfig {
+    /// Seconds between car-detection polls (default: 3)
+    pub scan_interval: Option<u64>,
+}
+
+impl MonitorConfig {
+    pub fn scan_interval_secs(&self) -> u64 {
+        self.scan_interval.unwrap_or(3)
+    }
 }
 
 #[derive(Deserialize, Default)]
