@@ -316,3 +316,107 @@ control.
 (`RevLedProfileWheel`, `ButtonLedProfile`, `DisplayLedProfile`, `ITMPRofile`)
 that vary by rim. When LED control is implemented, `WheelType` will be matched
 against the detected attached rim to select the correct section.
+
+---
+
+## Game IDs
+
+From `HardwareConfiguration.xml`. Each profile and settings block references a
+game by `(MajorId, MinorId)`. When `GameMajorId = -1`, the entry is global
+(not game-specific).
+
+| Game | MajorId | MinorId |
+|------|---------|---------|
+| Assetto Corsa | 0 | 0 |
+| Assetto Corsa Competizione | 0 | 1 |
+| Assetto Corsa EVO | 0 | 2 |
+| Assetto Corsa Rally | 0 | 3 |
+| Automobilista | 1 | 0 |
+| Automobilista 2 | 1 | 1 |
+| DiRT Rally | 2 | 0 |
+| DiRT Rally 2.0 | 2 | 1 |
+| F1 24 | 4 | 10 |
+| F1 25 | 4 | 11 |
+| iRacing | 5 | 0 |
+| Project CARS 2 | 8 | 1 |
+| RaceRoom | 10 | 0 |
+| rFactor 2 | 11 | 1 |
+| Le Mans Ultimate | 11 | 2 |
+| Forza Motorsport | 17 | 0 |
+
+---
+
+## LED color index
+
+From `CurrentSettings.xml`. Color index values used in LED configurations:
+
+| ColorIndex | Color |
+|-----------|-------|
+| 0 | Off |
+| 1 | Red |
+| 2 | Green |
+| 3 | Blue |
+| 4 | Yellow |
+| 5 | Magenta (unconfirmed) |
+| 6 | Cyan (unconfirmed) |
+| 7 | White |
+| 12 | Orange |
+
+Values 5 and 6 appear in the data but have not been visually verified.
+
+---
+
+## Button LED profiles
+
+Three wheel rim types with distinct button LED layouts, from `CurrentSettings.xml`:
+
+| Profile key | Description |
+|-------------|-------------|
+| `ButtonLedsBMW` | BMW GT2 rim — 12 buttons, RGB per button |
+| `ButtonLedsBMR` | BMW M4 rim — 12 buttons, RGB per button |
+| `ButtonLedsGTSWX` | GT SWX rim — 12 buttons, RGB per button + RPM-triggered color cycling |
+
+---
+
+## ITM profiles (In-Telemetry-Monitor)
+
+Wheel-specific display profiles, from `CurrentSettings.xml`:
+
+| Profile key | Target display |
+|-------------|----------------|
+| `BaseProfile` | Base unit display |
+| `BmeProfile` | BMW M4 (BME) wheel |
+| `BentleyProfile` | Bentley wheel |
+| `GtswxProfile` | GT SWX wheel |
+| `SmallOledProfile` | Wheels with a small OLED display |
+
+---
+
+## Telemetry channels
+
+Channel definitions per game, from `Configuration.xml`.
+
+**All games:**
+RPM, Speed, Gear, Fuel, Position, LapNumber, Brake, Throttle
+
+**ACC / AC EVO additionally:**
+Flags (Yellow, Blue, White, Green, Orange), RainLights, DirectionLights,
+TC graphics, ABS graphics, EngineMap, DRS
+
+---
+
+## Fanatec App XML files
+
+Location: `C:\Program Files\Fanatec\FanatecService\Service\xml\`
+
+| File | Contents |
+|------|----------|
+| `HardwareConfiguration.xml` | Hardware capabilities, game list, `MajorId`/`MinorId` mappings |
+| `CurrentSettings.xml` | LED color tables, button LED layouts per rim, ITM display profiles, per-game LED trigger configurations |
+| `Configuration.xml` | Telemetry channel definitions per game |
+| `CarsList_{game}.xml` | carPath → display name (one file per game) |
+| `ProfileCarsList_{game}.xml` | carPath → `.pws` filename (one file per game) |
+
+fanatec-tuner currently reads `CarsList_*.xml` and `ProfileCarsList_*.xml` for
+profile matching. `CurrentSettings.xml` and `Configuration.xml` will be used
+when LED and display control is implemented.

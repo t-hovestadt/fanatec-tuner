@@ -26,7 +26,11 @@ tuning request (col03 on the DD+).
 | Game | Detection | Status |
 |------|-----------|--------|
 | iRacing | Shared memory (`Local\IRSDKMemMapFileName`) | Working |
-| Assetto Corsa / EVO / ACC | Shared memory (`acpmf_static`, `acevo_pmf_static`) | Planned |
+| Assetto Corsa EVO | Shared memory (`Local\acevo_pmf_static`) | Implemented |
+| Assetto Corsa / ACC | Shared memory (`Local\acpmf_static`) | Implemented |
+
+AC1 and ACC share the same shared memory name and are both reported as
+`"Assetto Corsa"` — they are indistinguishable at the shared memory level.
 
 ---
 
@@ -46,6 +50,30 @@ The game name and car name are extracted from the filename stem. Fuzzy
 matching handles minor differences between the filename and iRacing's
 reported car name (substring, reverse substring, underscore→space
 normalization).
+
+---
+
+## Hardware XML files
+
+fanatec-tuner optionally reads Fanatec App XML car list files for accurate
+profile matching. Without them, matching falls back to filename-based fuzzy
+matching.
+
+Files are resolved per-game in priority order:
+
+1. `profiles/xml/` — local override (see `profiles/xml/README.txt`)
+2. `C:\Program Files\Fanatec\FanatecService\Service\xml\` — auto-detected on Windows
+3. Custom path set via `[xml] path` in `fanatec-tuner.toml`
+
+When found, XML matching takes priority over filename fuzzy matching:
+- `ProfileCarsList_*.xml` maps iRacing/AC carPath identifiers directly to `.pws` filenames (highest confidence)
+- `CarsList_*.xml` maps carPath identifiers to display names (used for fuzzy fallback)
+
+These files also contain LED color tables, button LED layouts, and ITM telemetry
+configurations that will be used for future LED and display control.
+
+To use XML matching without the Fanatec App installed, copy the XML files from
+a machine that has the App to your local `profiles/xml/` directory.
 
 ---
 
@@ -147,8 +175,11 @@ See [PROTOCOL.md](PROTOCOL.md) for the full protocol reference.
 - **Fanatec App must be stopped** — it holds the HID device with
   exclusive access. fanatec-tuner will fail to open the device with
   `ERROR_SHARING_VIOLATION` if the App or `FWPnpService` is running.
-- **iRacing only for monitor mode** — AC / EVO / ACC car detection is
-  not yet implemented.
+- **AC / EVO / ACC unconfirmed on hardware** — car detection is
+  implemented via shared memory but has not been tested on a real AC
+  installation.
+- **AC1 and ACC indistinguishable** — both use `Local\acpmf_static`;
+  fanatec-tuner reports both as `"Assetto Corsa"`.
 - **Apply takes ~1.5 seconds** — the 500 ms post-toggle sleep is
   required by the device before it will accept the write.
 
