@@ -97,8 +97,7 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
 }
 
 /// Reads the current device state, applies the profile, then reads back and
-/// prints a diff.  Returns false only when the write itself fails (caller
-/// should re-probe); readback failures are non-fatal.
+/// prints a diff.  Returns false only when the write fails (caller re-probes);
 fn do_apply(dev: &hid::FanatecDevice, prof: &PwsProfile) -> bool {
     let before_buf = match get_current_state(dev) {
         Some(b) => b,
@@ -108,41 +107,19 @@ fn do_apply(dev: &hid::FanatecDevice, prof: &PwsProfile) -> bool {
         }
     };
     let before = parse_tuning_report(&before_buf);
-
     let params = prof.write_params();
     let write_buf = build_full_write_report(&before_buf, &params);
 
-    // Diagnostic: print first 10 bytes to verify byte 2 = 0x00 (CMD_WRITE_PARAM).
-    eprintln!("  [dbg] write[0..10]: {}", hex_str(&write_buf[..10]));
-
-    // Toggle opens a write window on the DD+. Send immediately before the write.
-    let wake = build_wake_report();
-    if let Err(e) = hid::write_report(dev, &wake) {
-        eprintln!("  error: wake failed: {}", e);
-        return false;
-    }
-    std::thread::sleep(Duration::from_millis(500));
-
-    if let Err(e) = hid::write_report(dev, &write_buf) {
-        eprintln!("  error: write failed: {}", e);
-        return false;
-    }
-    std::thread::sleep(Duration::from_millis(200));
-
-    let request = build_request_report();
-    if let Err(e) = hid::write_report(dev, &request) {
-        eprintln!("  warning: could not request readback: {}", e);
-        return true; // write succeeded; readback failure is not a write error
-    }
-
-    match read_tuning_report(dev) {
+    match crate::write_with_retry(dev, &write_buf, &params) {
         Some(after_buf) => {
-            let after = parse_tuning_report(&after_buf);
-            crate::print_diff(&before, &after);
+            crate::print_diff(&before, &parse_tuning_report(&after_buf));
+            true
         }
-        None => eprintln!("  warning: could not read back tuning values after apply"),
+        None => {
+            eprintln!("  error: write did not take effect after 2 attempts");
+            false
+        }
     }
-    true
 }
 
 /// Returns the current device tuning state via a values request.
@@ -216,14 +193,6 @@ fn normalize(s: &str) -> String {
     s.to_lowercase()
         .replace('_', " ")
         .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn hex_str(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .map(|b| format!("{:02X}", b))
         .collect::<Vec<_>>()
         .join(" ")
 }

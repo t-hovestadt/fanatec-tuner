@@ -127,39 +127,16 @@ fn cmd_apply(pws_path: &std::path::Path) {
     );
 
     let before = parse_tuning_report(&before_buf);
-
     let params = prof.write_params();
     let write_buf = build_full_write_report(&before_buf, &params);
 
-    // Toggle opens a write window on the DD+. Send immediately before the write.
-    let wake = build_wake_report();
-    if let Err(e) = hid::write_report(dev, &wake) {
-        eprintln!("error: wake failed: {}", e);
-        std::process::exit(1);
-    }
-    std::thread::sleep(std::time::Duration::from_millis(500));
-
-    if let Err(e) = hid::write_report(dev, &write_buf) {
-        eprintln!("error: write failed: {}", e);
-        std::process::exit(1);
-    }
-    std::thread::sleep(std::time::Duration::from_millis(200));
-
-    let request = build_request_report();
-    if let Err(e) = hid::write_report(dev, &request) {
-        eprintln!("warning: could not request readback: {}", e);
-        return;
-    }
-    let after_buf = match read_tuning_report(dev) {
-        Some(b) => b,
+    match write_with_retry(dev, &write_buf, &params) {
+        Some(after_buf) => print_diff(&before, &parse_tuning_report(&after_buf)),
         None => {
-            eprintln!("warning: could not read back tuning values after apply");
-            return;
+            eprintln!("error: write did not take effect after 2 attempts");
+            std::process::exit(1);
         }
-    };
-    let after = parse_tuning_report(&after_buf);
-
-    print_diff(&before, &after);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -353,6 +330,66 @@ fn read_tuning_report(dev: &hid::FanatecDevice) -> Option<[u8; REPORT_SIZE]> {
         }
     }
     None
+}
+
+/// Writes all params to the device using a write→toggle→read retry loop.
+///
+/// The DD+ toggle (CMD 0x06) alternates between two states. One state accepts
+/// writes; the other does not (writes are silently ignored). We don't know
+/// which state the device is currently in, so we try both:
+///
+///   Attempt 1: write → 200ms → toggle → 200ms → request → read
+///   Attempt 2: write → 200ms → toggle → 200ms → request → read → toggle (restore)
+///
+/// One of the two attempts will be in the writable state. Returns the readback
+/// buffer on success, None if both attempts show no change or the device errors.
+pub(crate) fn write_with_retry(
+    dev: &hid::FanatecDevice,
+    write_buf: &[u8; REPORT_SIZE],
+    params: &[(usize, u8)],
+) -> Option<[u8; REPORT_SIZE]> {
+    let wake = build_wake_report();
+    let request = build_request_report();
+
+    // Attempt 1
+    if hid::write_report(dev, write_buf).is_err() {
+        return None;
+    }
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    if hid::write_report(dev, &wake).is_err() {
+        return None;
+    }
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    let _ = hid::write_report(dev, &request);
+    if let Some(after) = read_tuning_report(dev) {
+        if params_took_effect(&after, params) {
+            // Restore writable state for the next call.
+            let _ = hid::write_report(dev, &wake);
+            return Some(after);
+        }
+    }
+
+    // Attempt 2 — toggle in attempt 1 put us in the other state; try again.
+    if hid::write_report(dev, write_buf).is_err() {
+        return None;
+    }
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    if hid::write_report(dev, &wake).is_err() {
+        return None;
+    }
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    let _ = hid::write_report(dev, &request);
+    let after2 = read_tuning_report(dev);
+    // Restore writable state regardless of outcome.
+    let _ = hid::write_report(dev, &wake);
+    match after2 {
+        Some(buf) if params_took_effect(&buf, params) => Some(buf),
+        _ => None,
+    }
+}
+
+fn params_took_effect(buf: &[u8; REPORT_SIZE], params: &[(usize, u8)]) -> bool {
+    params.iter().all(|(addr, val)| buf[*addr] == *val)
 }
 
 /// Extracts the "col01" / "col02" label from a HID device path.
