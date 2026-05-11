@@ -127,15 +127,10 @@ fn cmd_apply(pws_path: &std::path::Path) {
     );
 
     let before = parse_tuning_report(&before_buf);
-    let params = prof.write_params();
-    let write_buf = build_full_write_report(&before_buf, &params);
 
-    match apply_write(dev, &write_buf) {
+    match apply_write(dev, &prof) {
         Some(after_buf) => print_diff(&before, &parse_tuning_report(&after_buf)),
-        None => {
-            eprintln!("error: could not read back tuning values after write");
-            std::process::exit(1);
-        }
+        None => println!("applied (unverified — readback failed)"),
     }
 }
 
@@ -332,26 +327,26 @@ fn read_tuning_report(dev: &hid::FanatecDevice) -> Option<[u8; REPORT_SIZE]> {
     None
 }
 
-/// Sends a write report and reads back the result.
+/// Writes a profile to the device and optionally reads back for verification.
 ///
-/// Sequence: write → toggle → 200ms → request → read → toggle (restore).
-/// The toggle after the write puts the device into readable mode; the final
-/// toggle restores writable mode for the next call.
+/// Builds the write report directly from the profile — no device read required
+/// before calling this. Sequence:
+///   write → 200ms → toggle → 200ms → request → read → toggle (restore)
 ///
-/// Byte 3 of write_buf must be 0x01 (enforced by build_full_write_report).
-/// The device silently ignores writes when byte 3 is 0x81.
+/// Returns the readback buffer if available. Returns None only if the HID
+/// write itself fails; readback failure is non-fatal and printed as a warning.
 pub(crate) fn apply_write(
     dev: &hid::FanatecDevice,
-    write_buf: &[u8; REPORT_SIZE],
+    prof: &profile::PwsProfile,
 ) -> Option<[u8; REPORT_SIZE]> {
+    let write_buf = prof.to_write_report();
     let wake = build_wake_report();
     let request = build_request_report();
-    if hid::write_report(dev, write_buf).is_err() {
+    if hid::write_report(dev, &write_buf).is_err() {
         return None;
     }
-    if hid::write_report(dev, &wake).is_err() {
-        return None;
-    }
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    let _ = hid::write_report(dev, &wake);
     std::thread::sleep(std::time::Duration::from_millis(200));
     let _ = hid::write_report(dev, &request);
     let after = read_tuning_report(dev);

@@ -36,30 +36,37 @@ impl PwsProfile {
         display / 10
     }
 
-    /// Returns all profile parameters as `(addr, wire_value)` pairs ready for
-    /// `build_full_write_report`. Addresses are the read-response byte positions;
-    /// the write offset (+1) is applied inside `build_full_write_report`.
-    pub fn write_params(&self) -> Vec<(usize, u8)> {
-        use crate::tuning;
-        vec![
-            (tuning::ADDR_SEN, self.sen),
-            (tuning::ADDR_FFS, self.ffs),
-            (tuning::ADDR_NDP, self.ndp),
-            (tuning::ADDR_NFR, self.nfr),
-            (tuning::ADDR_NIN, self.nin),
-            (tuning::ADDR_INT, self.int_),
-            (tuning::ADDR_FEI, self.fei),
-            (tuning::ADDR_FOR, Self::wire_div10(self.for_)),
-            (tuning::ADDR_SPR, Self::wire_div10(self.spr)),
-            (tuning::ADDR_DPR, Self::wire_div10(self.dpr)),
-            (tuning::ADDR_BLI, self.bli),
-            (tuning::ADDR_SHO, Self::wire_div10(self.sho)),
-            (tuning::ADDR_BRF, Self::wire_div10(self.brf)),
-            (tuning::ADDR_FUL, self.ful),
-            (tuning::ADDR_DRI, self.dri),
-            (tuning::ADDR_ACP, self.acp),
-            (tuning::ADDR_FF, self.ff),
-        ]
+    /// Builds a 64-byte write report directly from this profile's values.
+    /// Does not require reading the current device state first.
+    pub fn to_write_report(&self) -> [u8; crate::hid::REPORT_SIZE] {
+        use crate::tuning::{
+            ADDR_ACP, ADDR_BLI, ADDR_BRF, ADDR_DPR, ADDR_DRI, ADDR_FEI, ADDR_FF, ADDR_FFS,
+            ADDR_FOR, ADDR_FUL, ADDR_INT, ADDR_NDP, ADDR_NFR, ADDR_NIN, ADDR_SEN, ADDR_SHO,
+            ADDR_SPR, CMD_WRITE_PARAM, REPORT_ID, TUNING_MARKER,
+        };
+        let mut buf = [0u8; crate::hid::REPORT_SIZE];
+        buf[0] = REPORT_ID;
+        buf[1] = TUNING_MARKER;
+        buf[2] = CMD_WRITE_PARAM;
+        buf[3] = 0x01; // slot 1 — must not be 0x81 (device silently ignores writes)
+        buf[ADDR_SEN + 1] = self.sen;
+        buf[ADDR_FF + 1] = self.ff;
+        buf[ADDR_FFS + 1] = self.ffs;
+        buf[ADDR_NDP + 1] = self.ndp;
+        buf[ADDR_NFR + 1] = self.nfr;
+        buf[ADDR_NIN + 1] = self.nin;
+        buf[ADDR_INT + 1] = self.int_;
+        buf[ADDR_FEI + 1] = self.fei;
+        buf[ADDR_FOR + 1] = Self::wire_div10(self.for_);
+        buf[ADDR_SPR + 1] = Self::wire_div10(self.spr);
+        buf[ADDR_DPR + 1] = Self::wire_div10(self.dpr);
+        buf[ADDR_BLI + 1] = self.bli;
+        buf[ADDR_SHO + 1] = Self::wire_div10(self.sho);
+        buf[ADDR_BRF + 1] = Self::wire_div10(self.brf);
+        buf[ADDR_FUL + 1] = self.ful;
+        buf[ADDR_DRI + 1] = self.dri;
+        buf[ADDR_ACP + 1] = self.acp;
+        buf
     }
 }
 

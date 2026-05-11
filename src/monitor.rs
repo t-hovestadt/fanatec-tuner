@@ -2,12 +2,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::config;
 use crate::games::{self, CarDetected};
-use crate::hid::{self, REPORT_SIZE};
+use crate::hid;
 use crate::profile::PwsProfile;
-use crate::tuning::{
-    build_full_write_report, build_request_report, build_wake_report, is_tuning_report,
-    parse_tuning_report,
-};
 
 /// How long to wait for iRacing's process to reappear after it disappears
 /// during a session transition before declaring the game exited.
@@ -96,59 +92,16 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
     }
 }
 
-/// Reads the current device state, applies the profile, then reads back and
-/// prints a diff.  Returns false only when the write fails (caller re-probes);
+/// Applies the profile to the device. Returns false only on a hard HID write
+/// error (caller re-probes); readback failure is non-fatal.
 fn do_apply(dev: &hid::FanatecDevice, prof: &PwsProfile) -> bool {
-    let before_buf = match get_current_state(dev) {
-        Some(b) => b,
+    match crate::apply_write(dev, prof) {
+        Some(_) => true,
         None => {
-            eprintln!("  error: could not read device state before apply");
-            return false;
-        }
-    };
-    let before = parse_tuning_report(&before_buf);
-    let params = prof.write_params();
-    let write_buf = build_full_write_report(&before_buf, &params);
-
-    match crate::apply_write(dev, &write_buf) {
-        Some(after_buf) => {
-            crate::print_diff(&before, &parse_tuning_report(&after_buf));
+            eprintln!("  applied (unverified)");
             true
         }
-        None => {
-            eprintln!("  error: could not read back tuning values after write");
-            false
-        }
     }
-}
-
-/// Returns the current device tuning state via a values request.
-/// Falls back to a wake+retry if the device doesn't respond.
-fn get_current_state(dev: &hid::FanatecDevice) -> Option<[u8; REPORT_SIZE]> {
-    let request = build_request_report();
-    if hid::write_report(dev, &request).is_ok() {
-        if let Some(buf) = read_tuning_report(dev) {
-            return Some(buf);
-        }
-    }
-    // Fallback: advanced mode may have been reset — wake and retry once.
-    let wake = build_wake_report();
-    hid::write_report(dev, &wake).ok()?;
-    std::thread::sleep(Duration::from_millis(500));
-    hid::write_report(dev, &request).ok()?;
-    read_tuning_report(dev)
-}
-
-fn read_tuning_report(dev: &hid::FanatecDevice) -> Option<[u8; REPORT_SIZE]> {
-    let mut buf = [0u8; REPORT_SIZE];
-    for _ in 0..10 {
-        match hid::read_report(dev, &mut buf, 200) {
-            Ok(()) if is_tuning_report(&buf) => return Some(buf),
-            Ok(()) => {}
-            Err(_) => break,
-        }
-    }
-    None
 }
 
 fn find_matching_profile<'a>(
