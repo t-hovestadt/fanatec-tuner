@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::carlist;
@@ -18,23 +19,22 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
         println!("{} profile(s) loaded", profiles.len());
     }
 
-    // Load XML car lists for exact carPath matching.
-    let xml_dir = config.xml.xml_dir();
-    let (xml_cars_ir, xml_prof_ir) = xml_dir
-        .as_ref()
-        .map(|d| carlist::load_for_game(d, "iRacing"))
-        .unwrap_or_default();
-    let (xml_cars_ac, xml_prof_ac) = xml_dir
-        .as_ref()
-        .map(|d| carlist::load_for_game(d, "AC"))
-        .unwrap_or_default();
-    if xml_dir.is_some() {
-        println!(
-            "XML car lists: {} iRacing entries, {} AC entries",
-            xml_prof_ir.len() + xml_cars_ir.len(),
-            xml_prof_ac.len() + xml_cars_ac.len()
-        );
+    // Build XML candidate directories in priority order:
+    //   1. profiles/xml/  (local override, checked first)
+    //   2. Fanatec App default install path (Windows)
+    //   3. Custom path from config [xml] path (if set)
+    let profiles_dir = config.profiles.path.as_deref().unwrap_or("profiles");
+    let mut xml_candidates: Vec<PathBuf> = vec![PathBuf::from(profiles_dir).join("xml")];
+    #[cfg(windows)]
+    xml_candidates.push(PathBuf::from(
+        r"C:\Program Files\Fanatec\FanatecService\Service\xml",
+    ));
+    if let Some(ref p) = config.xml.path {
+        xml_candidates.push(PathBuf::from(p));
     }
+
+    let (xml_cars_ir, xml_prof_ir) = carlist::load_for_game(&xml_candidates, "iRacing");
+    let (xml_cars_ac, xml_prof_ac) = carlist::load_for_game(&xml_candidates, "AC");
 
     let devices = crate::open_devices();
     let mut dev_idx = match crate::probe_tuning_collection(&devices) {

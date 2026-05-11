@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// carPath → display name  (from CarsList_*.xml)
 pub type CarNames = HashMap<String, String>;
@@ -32,12 +32,28 @@ pub fn parse_profile_map(path: &Path) -> ProfileMap {
     map
 }
 
-/// Load both XML files for a game from `xml_dir`.
-/// `suffix` matches the filename suffix: "iRacing", "AC", "ACC", etc.
-pub fn load_for_game(xml_dir: &Path, suffix: &str) -> (CarNames, ProfileMap) {
-    let cars = parse_car_names(&xml_dir.join(format!("CarsList_{}.xml", suffix)));
-    let profiles = parse_profile_map(&xml_dir.join(format!("ProfileCarsList_{}.xml", suffix)));
+/// Load both XML files for a game, searching `candidate_dirs` in priority order.
+/// Logs which directory each file was resolved from.
+pub fn load_for_game(candidate_dirs: &[PathBuf], suffix: &str) -> (CarNames, ProfileMap) {
+    let cars = resolve_xml(candidate_dirs, &format!("CarsList_{}.xml", suffix))
+        .map(|p| parse_car_names(&p))
+        .unwrap_or_default();
+    let profiles = resolve_xml(candidate_dirs, &format!("ProfileCarsList_{}.xml", suffix))
+        .map(|p| parse_profile_map(&p))
+        .unwrap_or_default();
     (cars, profiles)
+}
+
+/// Find the first existing `filename` across `candidates`. Logs the resolved directory.
+fn resolve_xml(candidates: &[PathBuf], filename: &str) -> Option<PathBuf> {
+    for dir in candidates {
+        let p = dir.join(filename);
+        if p.exists() {
+            println!("[xml] {} loaded from {}", filename, dir.display());
+            return Some(p);
+        }
+    }
+    None
 }
 
 /// Parse one line of a Fanatec car-list XML.
