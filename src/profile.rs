@@ -70,6 +70,7 @@ impl PwsProfile {
 
     /// Builds a 64-byte write report directly from this profile's values.
     /// Does not require reading the current device state first.
+    #[allow(dead_code)]
     pub fn to_write_report(&self) -> [u8; crate::hid::REPORT_SIZE] {
         use crate::tuning::{
             ADDR_ACP, ADDR_BLI, ADDR_BRF, ADDR_DPR, ADDR_DRI, ADDR_FEI, ADDR_FF, ADDR_FFS,

@@ -365,6 +365,7 @@ pub fn get_hid_caps(_device: &FanatecDevice) -> Option<HidCaps> {
 // Traced I/O — identical to write_report / read_report but print every step
 // ---------------------------------------------------------------------------
 
+#[allow(dead_code)]
 fn hex27(buf: &[u8; REPORT_SIZE]) -> String {
     buf[..27]
         .iter()
@@ -375,6 +376,7 @@ fn hex27(buf: &[u8; REPORT_SIZE]) -> String {
 
 /// write_report with full WriteFile trace to stdout.
 #[cfg(windows)]
+#[allow(dead_code)]
 pub fn write_report_traced(
     device: &FanatecDevice,
     buf: &[u8; REPORT_SIZE],
@@ -430,6 +432,7 @@ pub fn write_report_traced(
 
 /// read_report with full ReadFile trace to stdout.
 #[cfg(windows)]
+#[allow(dead_code)]
 pub fn read_report_traced(
     device: &FanatecDevice,
     buf: &mut [u8; REPORT_SIZE],
