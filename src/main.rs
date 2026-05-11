@@ -6,6 +6,7 @@ mod hid;
 mod led;
 mod monitor;
 mod profile;
+mod sdk;
 mod tuning;
 
 use clap::{Parser, Subcommand};
@@ -46,6 +47,8 @@ enum Command {
     LedTest,
     /// Persistent-handle write stress: 3 writes on the same open handles, hex-dumped
     WriteStress,
+    /// Load the Fanatec SDK DLL, read tuning state, set a test param, verify, restore
+    SdkTest,
 }
 
 fn main() {
@@ -74,6 +77,7 @@ fn main() {
         Some(Command::WriteTest) => cmd_write_test(),
         Some(Command::LedTest) => cmd_led_test(),
         Some(Command::WriteStress) => cmd_write_stress(&cfg),
+        Some(Command::SdkTest) => cmd_sdk_test(),
     }
 }
 
@@ -233,6 +237,13 @@ pub(crate) fn open_devices() -> Vec<hid::FanatecDevice> {
 /// Working collection path cached within the process lifetime.
 static TUNING_COLLECTION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
+/// Fanatec SDK DLL, loaded once on first use.
+static SDK: std::sync::OnceLock<Option<sdk::SdkLib>> = std::sync::OnceLock::new();
+
+fn get_sdk() -> Option<&'static sdk::SdkLib> {
+    SDK.get_or_init(sdk::load_sdk).as_ref()
+}
+
 /// Tries each collection in turn. Returns device index + raw 64-byte tuning
 /// report from the first collection that accepts a read request and responds.
 ///
@@ -330,19 +341,36 @@ fn drain_stale_reports(dev: &hid::FanatecDevice) {
 
 /// Writes a profile to the device and reads back for verification.
 ///
-/// Matches FanaBridge's exact sequence (no toggles):
-///   drain → request → pre-read → build write → send write → ack burst →
-///   drain → request → readback
+/// Tries the Fanatec SDK DLL first (FSTmDataSet + FSTmDataSave); falls back to
+/// raw HID read-modify-write if the SDK is unavailable or fails.
 ///
-/// Returns the readback buffer if available. Returns None only if the HID
-/// write itself fails; readback failure is non-fatal.
+/// Returns the readback buffer if available. Returns None only if both paths
+/// fail at the HID write level; readback failure is non-fatal.
 pub(crate) fn apply_write(
     col03: &hid::FanatecDevice,
     col01: Option<&hid::FanatecDevice>,
     prof: &profile::PwsProfile,
 ) -> Option<[u8; REPORT_SIZE]> {
+    // SDK path: FSTmDataSet + FSTmDataSave (more reliable than raw HID on some firmware).
+    if let Some(sdk_lib) = get_sdk() {
+        match sdk_lib.connect(col03.product_id) {
+            Err(e) => eprintln!("  SDK connect failed ({}), using raw HID", e),
+            Ok(sdk_dev) => {
+                let params: Vec<(i32, i32)> = prof
+                    .to_params()
+                    .into_iter()
+                    .map(|(addr, val)| (addr as i32, val as i32))
+                    .collect();
+                match sdk::apply_profile(&sdk_dev, &params) {
+                    Ok(buf) => return Some(buf),
+                    Err(e) => eprintln!("  SDK write failed ({}), using raw HID", e),
+                }
+            }
+        }
+    }
+
+    // Raw HID fallback — FanaBridge-exact sequence, no toggles.
     let request = build_request_report();
-    // Pre-read current state for read-modify-write; fall back to scratch on failure.
     drain_stale_reports(col03);
     let _ = hid::write_report(col03, &request);
     let write_buf = match read_tuning_report(col03) {
@@ -374,6 +402,109 @@ pub(crate) fn collection_label(path: &str) -> String {
         return path[start..end.min(start + 5)].to_string();
     }
     "collection".to_string()
+}
+
+// ---------------------------------------------------------------------------
+// sdk-test — verify Fanatec SDK DLL: read, set test param, verify, restore
+// ---------------------------------------------------------------------------
+
+fn cmd_sdk_test() {
+    let lib = match sdk::load_sdk() {
+        Some(l) => l,
+        None => {
+            eprintln!("error: Fanatec SDK DLL not found");
+            eprintln!(
+                "  Copy EndorFanatecSdk64_VS2019.dll next to fanatec-tuner.exe, or install\n  \
+                 the Fanatec wheel software so the DLL is at the default path."
+            );
+            std::process::exit(1);
+        }
+    };
+
+    let devices = open_devices();
+    let (idx, _) = match probe_tuning_collection(&devices) {
+        Some(r) => r,
+        None => {
+            eprintln!("error: no HID collection responded to the tuning request.");
+            std::process::exit(1);
+        }
+    };
+    let pid = devices[idx].product_id;
+    println!("Connecting SDK to PID 0x{:04X}...", pid);
+
+    let dev = match lib.connect(pid) {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("error: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // Initial read.
+    let initial = match dev.read_tuning() {
+        Ok(b) => b,
+        Err(e) => {
+            eprintln!("error: FSTmDataReportRead failed: {}", e);
+            std::process::exit(1);
+        }
+    };
+    println!("read  [0..24]: {}", hex_str(&initial[..24]));
+    println!("\nInitial state:");
+    print_profile(&parse_tuning_report(&initial));
+
+    // Test: nudge FF by ±10.
+    let original_ff = initial[tuning::ADDR_FF] as i32;
+    let test_ff = if original_ff >= 10 {
+        original_ff - 10
+    } else {
+        original_ff + 10
+    };
+    println!(
+        "\nSetting FF {} → {} via FSTmDataSet...",
+        original_ff, test_ff
+    );
+
+    if let Err(e) = dev.set_param(sdk::SDK_PARAM_FF, test_ff) {
+        eprintln!("  FSTmDataSet failed: {}", e);
+    } else if let Err(e) = dev.save() {
+        eprintln!("  FSTmDataSave failed: {}", e);
+    } else {
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        match dev.read_tuning() {
+            Err(e) => eprintln!("  readback failed: {}", e),
+            Ok(after) => {
+                println!("after [0..24]: {}", hex_str(&after[..24]));
+                let got = after[tuning::ADDR_FF] as i32;
+                if got == test_ff {
+                    println!("  FF = {} ✓", got);
+                } else {
+                    println!(
+                        "  FF = {} (expected {}  — param ID may be wrong)",
+                        got, test_ff
+                    );
+                }
+                print_diff(&parse_tuning_report(&initial), &parse_tuning_report(&after));
+            }
+        }
+    }
+
+    // Restore.
+    println!("\nRestoring FF to {}...", original_ff);
+    let _ = dev.set_param(sdk::SDK_PARAM_FF, original_ff);
+    let _ = dev.save();
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    match dev.read_tuning() {
+        Ok(final_buf) => println!(
+            "Final FF: {}  ({})",
+            final_buf[tuning::ADDR_FF],
+            if final_buf[tuning::ADDR_FF] as i32 == original_ff {
+                "restored"
+            } else {
+                "MISMATCH"
+            }
+        ),
+        Err(e) => eprintln!("  final readback failed: {}", e),
+    }
 }
 
 // ---------------------------------------------------------------------------
