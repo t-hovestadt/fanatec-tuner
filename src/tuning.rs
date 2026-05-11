@@ -127,8 +127,9 @@ pub fn encode_sen_degrees(degrees: u32) -> u8 {
 }
 
 /// Returns true if the 64-byte buffer is a tuning report.
+/// Matches both 0x01 (standard) and 0x81 (advanced mode) response bytes.
 pub fn is_tuning_report(buf: &[u8; REPORT_SIZE]) -> bool {
-    buf[0] == REPORT_ID && buf[1] == TUNING_MARKER
+    buf[0] == REPORT_ID && buf[1] == TUNING_MARKER && buf[2] & 0x7F == 0x01
 }
 
 pub fn parse_tuning_report(buf: &[u8; REPORT_SIZE]) -> TuningProfile {
@@ -191,16 +192,10 @@ pub fn build_select_slot_report(slot: u8) -> [u8; REPORT_SIZE] {
 /// Builds a write report applying `params` to a snapshot of the current device
 /// state (`base`, the last received read response).
 ///
-/// The DD+ expects ALL parameters in a single report with CMD=0x00.  Sending
-/// parameters one at a time (each in its own report) does not work — readback
-/// shows no change.
-///
-/// **Write direction offset:** read position i maps to write position i+2.
-/// buf[3] = read buf[2] (devId + mode flag — must reflect device's current state),
-/// buf[4] = UserSetupIndex (slot 1), params start at buf[5] = read buf[3] = SEN.
-///
-/// All bytes not covered by `params` retain the current device-state value from
-/// `base`, preserving any undocumented parameters.
+/// Matches FanaBridge's BuildWriteBuffer exactly:
+///   writeBuf[3..64] = readBuf[2..63]
+/// This preserves devId/mode (readBuf[2] → writeBuf[3]), slot (readBuf[3] → writeBuf[4]),
+/// and all param bytes. Params are then overlaid at writeBuf[addr+2].
 pub fn build_full_write_report(
     base: &[u8; REPORT_SIZE],
     params: &[(usize, u8)],
@@ -209,10 +204,8 @@ pub fn build_full_write_report(
     buf[0] = REPORT_ID;
     buf[1] = TUNING_MARKER;
     buf[2] = CMD_WRITE_PARAM;
-    // Shift received state: read position i → write position i+2
-    buf[5..REPORT_SIZE].copy_from_slice(&base[3..REPORT_SIZE - 2]);
-    buf[3] = base[2]; // devId + mode flag — copy from read response so device accepts the write
-    buf[4] = 0x01; // UserSetupIndex = slot 1
+    // Copy readBuf[2..63] → writeBuf[3..64], preserving devId, slot, and all params.
+    buf[3..63].copy_from_slice(&base[2..62]);
     for &(addr, val) in params {
         buf[addr + 2] = val;
     }

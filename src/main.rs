@@ -231,20 +231,13 @@ pub(crate) fn open_devices() -> Vec<hid::FanatecDevice> {
 static TUNING_COLLECTION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
 /// Tries each collection in turn. Returns device index + raw 64-byte tuning
-/// report from the first collection that accepts writes and responds.
+/// report from the first collection that accepts a read request and responds.
 ///
-/// Collections that reject the first write (e.g. col01 → ERROR_INVALID_FUNCTION)
-/// are skipped immediately — no point waking a non-tuning endpoint.
-///
-/// The DD+ advanced-mode toggle (CMD 0x06) is a flip, not an enable, so the
-/// device may already be in advanced mode when we arrive. Three attempts:
-///   Attempt 1: wake → 500 ms → request+poll
-///   Attempt 2: wake → 500 ms → request+poll   (corrects if attempt 1 toggled it off)
-///   Attempt 3: 1000 ms extra → wake → 500 ms → request+poll  (longer settle)
+/// Matches FanaBridge's probe sequence: drain → send READ [FF 03 02] → poll.
+/// No toggle (CMD 0x06) — that flips the device mode and corrupts the cycle.
 pub(crate) fn probe_tuning_collection(
     devices: &[hid::FanatecDevice],
 ) -> Option<(usize, [u8; REPORT_SIZE])> {
-    let wake = build_wake_report();
     let request = build_request_report();
 
     // If we already found the working collection this process, put it first.
@@ -262,34 +255,25 @@ pub(crate) fn probe_tuning_collection(
         let col = collection_label(&dev.device_path);
         print!("  Probing {} ... ", col);
 
+        drain_stale_reports(dev);
+
         // Bail immediately if the collection refuses writes.
-        if hid::write_report(dev, &wake).is_err() {
+        if hid::write_report(dev, &request).is_err() {
             println!("skip (write rejected)");
             continue;
         }
 
-        // Attempt 1: wake already sent above; wait + request + poll.
-        if let Some(buf) = request_and_poll(dev, &request) {
+        if let Some(buf) = read_tuning_report(dev) {
             println!("OK");
             let _ = TUNING_COLLECTION.set(dev.device_path.clone());
             return Some((idx, buf));
         }
 
-        // Attempt 2: toggle again (corrects if attempt 1 landed us in wrong state).
-        print!("(retry 2) ");
-        if hid::write_report(dev, &wake).is_ok() {
-            if let Some(buf) = request_and_poll(dev, &request) {
-                println!("OK");
-                let _ = TUNING_COLLECTION.set(dev.device_path.clone());
-                return Some((idx, buf));
-            }
-        }
-
-        // Attempt 3: give the base 1 s extra to settle then try once more.
-        print!("(retry 3) ");
-        std::thread::sleep(std::time::Duration::from_millis(1000));
-        if hid::write_report(dev, &wake).is_ok() {
-            if let Some(buf) = request_and_poll(dev, &request) {
+        // Retry once after a short settle.
+        print!("(retry) ");
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        if hid::write_report(dev, &request).is_ok() {
+            if let Some(buf) = read_tuning_report(dev) {
                 println!("OK");
                 let _ = TUNING_COLLECTION.set(dev.device_path.clone());
                 return Some((idx, buf));
@@ -297,27 +281,6 @@ pub(crate) fn probe_tuning_collection(
         }
 
         println!("no tuning response");
-    }
-    None
-}
-
-/// Sends a request report, then polls for a tuning reply (up to 10 × 200 ms).
-fn request_and_poll(
-    dev: &hid::FanatecDevice,
-    request: &[u8; REPORT_SIZE],
-) -> Option<[u8; REPORT_SIZE]> {
-    std::thread::sleep(std::time::Duration::from_millis(500));
-    drain_stale_reports(dev);
-    if hid::write_report(dev, request).is_err() {
-        return None;
-    }
-    let mut buf = [0u8; REPORT_SIZE];
-    for _ in 0..10 {
-        match hid::read_report(dev, &mut buf, 200) {
-            Ok(()) if is_tuning_report(&buf) => return Some(buf),
-            Ok(()) => {}
-            Err(_) => break,
-        }
     }
     None
 }
@@ -362,12 +325,11 @@ fn drain_stale_reports(dev: &hid::FanatecDevice) {
     while hid::read_report(dev, &mut buf, 50).is_ok() {}
 }
 
-/// Writes a profile to the device and optionally reads back for verification.
+/// Writes a profile to the device and reads back for verification.
 ///
-/// Pre-reads current device state for read-modify-write; falls back to a
-/// scratch write if the pre-read fails. Sequence:
-///   drain → request → pre-read → write → ack burst → 200ms → toggle → 200ms →
-///   drain → request → readback → toggle
+/// Matches FanaBridge's exact sequence (no toggles):
+///   drain → request → pre-read → build write → send write → ack burst →
+///   drain → request → readback
 ///
 /// Returns the readback buffer if available. Returns None only if the HID
 /// write itself fails; readback failure is non-fatal.
@@ -376,9 +338,8 @@ pub(crate) fn apply_write(
     col01: Option<&hid::FanatecDevice>,
     prof: &profile::PwsProfile,
 ) -> Option<[u8; REPORT_SIZE]> {
-    let wake = build_wake_report();
     let request = build_request_report();
-    // Pre-read current state; fall back to scratch write if unavailable.
+    // Pre-read current state for read-modify-write; fall back to scratch on failure.
     drain_stale_reports(col03);
     let _ = hid::write_report(col03, &request);
     let write_buf = match read_tuning_report(col03) {
@@ -391,16 +352,10 @@ pub(crate) fn apply_write(
     if let Some(c01) = col01 {
         send_ack_burst(c01);
     }
-    std::thread::sleep(std::time::Duration::from_millis(200));
-    let _ = hid::write_report(col03, &wake);
-    std::thread::sleep(std::time::Duration::from_millis(200));
-    // Drain stale input before requesting fresh values.
+    // Readback to verify.
     drain_stale_reports(col03);
     let _ = hid::write_report(col03, &request);
-    let after = read_tuning_report(col03);
-    // Restore writable state for the next call.
-    let _ = hid::write_report(col03, &wake);
-    after
+    read_tuning_report(col03)
 }
 
 /// Extracts the "col01" / "col02" label from a HID device path.
