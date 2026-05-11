@@ -49,10 +49,14 @@ to a values-request command.
 
 | Byte 2 | Purpose | Byte 3 |
 |---|---|---|
-| `0x04` | Request current tuning values | 0x00 |
+| `0x00` | Write all parameters | 0x01 (devId; must not be 0x81) |
 | `0x01` | Select tuning slot | slot number (1–5) |
-| `0x00` | Write a single parameter | 0x00 (value at param byte addr) |
+| `0x02` | Request current tuning values (READ) | 0x00 |
+| `0x03` | Save tuning to flash | 0x00 |
+| `0x04` | **Factory reset** — restores device to factory defaults | 0x00 |
 | `0x06` | Toggle advanced mode | 0x00 |
+
+**Warning:** `0x04` is a destructive factory reset, not a read command. Always use `0x02` to request tuning values.
 
 **Sending:** use `WriteFile` on the device handle (HID output report).
 Do **not** use `HidD_SetFeature` — the driver uses `hid_hw_output_report`,
@@ -168,16 +172,18 @@ before running this tool.
 
 Windows exposes PID 0x0020 as **three separate HID collections**:
 
-| Path suffix | Role | Tuning? |
+| Path suffix | Role | Report size |
 |---|---|---|
-| `&col01` | Wheel input (axes, buttons) | No — `WriteFile` returns `ERROR_INVALID_FUNCTION (1)` |
-| `col02` | Tuning endpoint | **Yes** — accepts 64-byte output reports |
-| `col03` | Unknown (possibly LED / display) | TBD |
+| `&col01` | Display and ACK burst channel | 8 bytes |
+| `col02` | (Varies by firmware) | — |
+| `col03` | Tuning + LED control (confirmed on CS DD+) | 64 bytes |
 
-`enumerate_fanatec()` returns all three. The correct one for tuning must be
+`enumerate_fanatec()` returns all collections. The correct one for tuning must be
 found by probing: attempt `WriteFile` and move to the next collection on
-`ERROR_INVALID_FUNCTION`. The successful collection is typically col02 but
-the probe loop is order-independent.
+`ERROR_INVALID_FUNCTION`. On the ClubSport DD+ this is col03; the probe loop is
+order-independent and caches the result in a `OnceLock`.
+
+**col01** is also written to after every tuning write — see *Col01 ACK burst* below.
 
 ---
 
@@ -249,11 +255,12 @@ do the same when connecting cold, but must not assume the starting state.
 1. Open device (shared, overlapped)
 2. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61])   ← wake / advanced-mode toggle
 3. Sleep 500 ms
-4. WriteFile([0xFF, 0x03, 0x04, 0x00 × 61])   ← request values
-5. ReadFile(buf, 64, overlapped)  with WaitForSingleObject(event, 200ms)
-6. Check buf[0]==0xFF && buf[1]==0x03          ← tuning report?
-   If not, loop back to step 5 (other HID traffic may arrive first)
-7. Decode parameters from buf
+4. Drain stale input: loop ReadFile(50ms timeout) until timeout
+5. WriteFile([0xFF, 0x03, 0x02, 0x00 × 61])   ← request values (0x02 = READ)
+6. ReadFile(buf, 64, overlapped)  with WaitForSingleObject(event, 200ms)
+7. Check buf[0]==0xFF && buf[1]==0x03          ← tuning report?
+   If not, loop back to step 6 (other HID traffic may arrive first)
+8. Decode parameters from buf
 ```
 
 ---
@@ -272,11 +279,13 @@ overlay the new values, and send once.
    buf[3]    = 0x01          ← REQUIRED: see note below
    buf[addr+1] = encoded_value  (for each param to update)
 3. WriteFile(write_buf)      ← single write, all params at once
-4. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61])  ← toggle to readable mode
-5. Sleep 200 ms
-6. WriteFile([0xFF, 0x03, 0x04, 0x00 × 61])  ← request values
-7. ReadFile → verify
-8. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61])  ← toggle back to writable mode
+4. Send col01 ACK burst      ← see Col01 ACK burst section below
+5. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61])  ← toggle to readable mode
+6. Sleep 200 ms
+7. Drain stale input: loop ReadFile(50ms timeout) until timeout
+8. WriteFile([0xFF, 0x03, 0x02, 0x00 × 61])  ← request values (0x02 = READ)
+9. ReadFile → verify
+10. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61]) ← toggle back to writable mode
 ```
 
 **Byte 3 must be `0x01`:** The device silently ignores write reports when
@@ -420,3 +429,92 @@ Location: `C:\Program Files\Fanatec\FanatecService\Service\xml\`
 fanatec-tuner currently reads `CarsList_*.xml` and `ProfileCarsList_*.xml` for
 profile matching. `CurrentSettings.xml` and `Configuration.xml` will be used
 when LED and display control is implemented.
+
+---
+
+## Col01 ACK burst
+
+After every successful tuning write on col03, send **4 ON/OFF pulse pairs** on
+col01 (the display/ACK channel). This matches FanaBridge behaviour and improves
+write reliability. Each packet is 8 bytes sent via `WriteFile` (not `HidD_SetOutputReport`).
+
+```
+ON:  [0x01, 0xF8, 0x09, 0x01, 0x06, 0xFF, 0x02, 0x00]
+OFF: [0x01, 0xF8, 0x09, 0x01, 0x06, 0x00, 0x00, 0x00]
+```
+
+Sequence: ON → 1ms → OFF → 1ms → repeat × 4 = 8 packets total.
+
+If col01 cannot be opened (device not present or exclusive access), skip the
+burst — writes still succeed without it.
+
+---
+
+## LED protocol (col03)
+
+LED reports share the col03 handle with tuning reports. They are distinguished
+by byte 1: tuning uses `0x03`, LED uses `0x01`.
+
+```
+Byte 0:  0xFF  — report ID
+Byte 1:  0x01  — LED marker
+Byte 2:  subcmd
+Bytes 3+: payload (subcmd-dependent)
+```
+
+| Subcmd | Purpose | Max LEDs | Payload |
+|--------|---------|----------|---------|
+| `0x00` | Rev LED colors | 9 | RGB565 pairs, big-endian, 2 bytes each |
+| `0x01` | Flag LED colors | 6 | RGB565 pairs, big-endian, 2 bytes each |
+| `0x02` | Button LED colors | 12 | RGB565 pairs + commit byte at offset 27 |
+| `0x03` | Button LED intensities | 16 | 1 byte each (0–7, 3-bit); commit byte at offset 18 |
+
+**RGB565 encoding:** blue occupies bits 15–11, green bits 10–5, red bits 4–0.
+Each value is packed big-endian (high byte first) in the report. In code:
+```
+value = (b5 << 11) | (g6 << 5) | r5
+buf[offset]   = (value >> 8) as u8
+buf[offset+1] = (value & 0xFF) as u8
+```
+
+**Two-phase button LED commit:** to apply colors and intensities atomically, send
+colors with `commit=0` (byte 27 = 0x00) then intensities with `commit=1`
+(byte 18 = 0x01). The second write triggers the visible update.
+
+Some wheels use `rgb555` encoding (5-5-5, no extra green bit) — see
+`colorFormat` in `profiles/wheels/*.json`.
+
+---
+
+## Display protocol (col01)
+
+The 3-digit 7-segment display is driven via the col01 channel using 8-byte
+reports. Matches the Linux `hid-fanatecff` driver `ftec_set_display()` and
+FanaBridge `DisplayEncoder`.
+
+```
+[0x01, 0xF8, 0x09, 0x01, 0x02, seg1, seg2, seg3]
+```
+
+Bytes 0–4 are fixed; bytes 5–7 are the 7-segment encoded characters for the
+three digit positions (left to right).
+
+**7-segment bit layout:**
+```
+  seg0  ───
+seg5 |     | seg1
+  seg6  ───
+seg4 |     | seg2
+  seg3  ───    • seg7 = decimal point
+```
+
+| Value | Meaning |
+|-------|---------|
+| `0x00` | Blank |
+| `0x40` | Dash (`-`) |
+| `0x80` | Dot (`.`) |
+| `0x3F`–`0x6F` | Digits 0–9 |
+| `0x50` | `r` (reverse gear indicator) |
+| `0x54` | `n` (neutral gear indicator) |
+
+All three digits are always sent; use `0x00` (blank) for unused positions.
