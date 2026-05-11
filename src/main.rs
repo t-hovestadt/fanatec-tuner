@@ -376,27 +376,6 @@ pub(crate) fn apply_write(
     prof: &profile::PwsProfile,
 ) -> Option<[u8; REPORT_SIZE]> {
     let write_buf = prof.to_write_report();
-    // Debug: dump the first 27 bytes so the byte layout can be compared against
-    // the FanaBridge WRITE byte map (bytes 0-2 header, 3=devId, 4=slot, 5=SEN, ...).
-    {
-        let hex: Vec<String> = write_buf[..27]
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect();
-        println!("[dbg] write bytes 0-26: {}", hex.join(" "));
-        println!(
-            "[dbg] profile: FF={} NDP={} SEN=0x{:02X} FEI={} SHO={} BLI={} FOR={} NIN={} FUL={}",
-            prof.ff,
-            prof.ndp,
-            prof.sen,
-            prof.fei,
-            prof.sho,
-            prof.bli,
-            prof.for_,
-            prof.nin,
-            prof.ful
-        );
-    }
     let wake = build_wake_report();
     let request = build_request_report();
     if hid::write_report(col03, &write_buf).is_err() {

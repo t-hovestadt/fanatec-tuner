@@ -195,9 +195,9 @@ pub fn build_select_slot_report(slot: u8) -> [u8; REPORT_SIZE] {
 /// parameters one at a time (each in its own report) does not work — readback
 /// shows no change.
 ///
-/// **Write direction offset:** byte 2 carries CMD_WRITE_PARAM (0x00), so every
-/// parameter sits at `addr + 1` — one position to the right of its read-response
-/// address.  Driver source: `ftec_tuning_data[addr + 1] = val` (hid-ftecff-tuning.c:85).
+/// **Write direction offset:** read position i maps to write position i+2.
+/// buf[3] = devId (0x01), buf[4] = UserSetupIndex (0x00 = current slot),
+/// params start at buf[5] = read buf[3] = SEN.
 ///
 /// All bytes not covered by `params` retain the current device-state value from
 /// `base`, preserving any undocumented parameters.
@@ -209,14 +209,12 @@ pub fn build_full_write_report(
     buf[0] = REPORT_ID;
     buf[1] = TUNING_MARKER;
     buf[2] = CMD_WRITE_PARAM;
-    // Shift received state: read position i → write position i+1
-    buf[3..REPORT_SIZE].copy_from_slice(&base[2..REPORT_SIZE - 1]);
-    // byte 3 (slot/mode byte) must be 0x01 — device silently ignores writes
-    // when this byte is 0x81 (the other toggle state), confirmed empirically.
-    buf[3] = 0x01;
-    // Override with new values at write positions
+    // Shift received state: read position i → write position i+2
+    buf[5..REPORT_SIZE].copy_from_slice(&base[3..REPORT_SIZE - 2]);
+    buf[3] = 0x01; // devId — must not be 0x81 (device silently ignores writes)
+    buf[4] = 0x00; // UserSetupIndex (slot 0 = current slot)
     for &(addr, val) in params {
-        buf[addr + 1] = val;
+        buf[addr + 2] = val;
     }
     buf
 }
@@ -230,6 +228,8 @@ pub fn build_single_write_report(addr: usize, value: u8) -> [u8; REPORT_SIZE] {
     buf[0] = REPORT_ID;
     buf[1] = TUNING_MARKER;
     buf[2] = CMD_WRITE_PARAM;
-    buf[addr + 1] = value;
+    buf[3] = 0x01; // devId
+    buf[4] = 0x00; // UserSetupIndex
+    buf[addr + 2] = value;
     buf
 }

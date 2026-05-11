@@ -80,24 +80,25 @@ impl PwsProfile {
         buf[0] = REPORT_ID;
         buf[1] = TUNING_MARKER;
         buf[2] = CMD_WRITE_PARAM;
-        buf[3] = 0x01; // slot 1 — must not be 0x81 (device silently ignores writes)
-        buf[ADDR_SEN + 1] = self.sen;
-        buf[ADDR_FF + 1] = self.ff;
-        buf[ADDR_FFS + 1] = self.ffs;
-        buf[ADDR_NDP + 1] = self.ndp;
-        buf[ADDR_NFR + 1] = self.nfr;
-        buf[ADDR_NIN + 1] = self.nin;
-        buf[ADDR_INT + 1] = self.int_;
-        buf[ADDR_FEI + 1] = self.fei;
-        buf[ADDR_FOR + 1] = Self::wire_div10(self.for_);
-        buf[ADDR_SPR + 1] = Self::wire_div10(self.spr);
-        buf[ADDR_DPR + 1] = Self::wire_div10(self.dpr);
-        buf[ADDR_BLI + 1] = self.bli;
-        buf[ADDR_SHO + 1] = Self::wire_div10(self.sho);
-        buf[ADDR_BRF + 1] = Self::wire_div10(self.brf);
-        buf[ADDR_FUL + 1] = self.ful;
-        buf[ADDR_DRI + 1] = self.dri;
-        buf[ADDR_ACP + 1] = self.acp;
+        buf[3] = 0x01; // devId — must not be 0x81 (device silently ignores writes)
+        buf[4] = 0x00; // UserSetupIndex (slot 0 = current slot)
+        buf[ADDR_SEN + 2] = self.sen;
+        buf[ADDR_FF + 2] = self.ff;
+        buf[ADDR_FFS + 2] = self.ffs;
+        buf[ADDR_NDP + 2] = self.ndp;
+        buf[ADDR_NFR + 2] = self.nfr;
+        buf[ADDR_NIN + 2] = self.nin;
+        buf[ADDR_INT + 2] = self.int_;
+        buf[ADDR_FEI + 2] = self.fei;
+        buf[ADDR_FOR + 2] = Self::wire_div10(self.for_);
+        buf[ADDR_SPR + 2] = Self::wire_div10(self.spr);
+        buf[ADDR_DPR + 2] = Self::wire_div10(self.dpr);
+        buf[ADDR_BLI + 2] = self.bli;
+        buf[ADDR_SHO + 2] = Self::wire_div10(self.sho);
+        buf[ADDR_BRF + 2] = Self::wire_div10(self.brf);
+        buf[ADDR_FUL + 2] = self.ful;
+        buf[ADDR_DRI + 2] = self.dri;
+        buf[ADDR_ACP + 2] = self.acp;
         buf
     }
 }
