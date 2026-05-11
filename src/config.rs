@@ -2,11 +2,38 @@ use serde::Deserialize;
 use std::path::Path;
 
 #[derive(Deserialize, Default)]
+pub struct XmlConfig {
+    /// Path to the Fanatec App XML car lists directory.
+    /// Auto-detected from the default install path if not set.
+    pub path: Option<String>,
+}
+
+impl XmlConfig {
+    pub fn xml_dir(&self) -> Option<std::path::PathBuf> {
+        if let Some(ref p) = self.path {
+            return Some(std::path::PathBuf::from(p));
+        }
+        // Auto-detect default Fanatec install path on Windows.
+        #[cfg(windows)]
+        {
+            let default =
+                std::path::PathBuf::from(r"C:\Program Files\Fanatec\FanatecService\Service\xml");
+            if default.exists() {
+                return Some(default);
+            }
+        }
+        None
+    }
+}
+
+#[derive(Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
     pub profiles: ProfilesConfig,
     #[serde(default)]
     pub monitor: MonitorConfig,
+    #[serde(default)]
+    pub xml: XmlConfig,
 }
 
 #[derive(Deserialize, Default)]

@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use crate::carlist;
 use crate::config;
 use crate::games::{self, CarDetected};
 use crate::hid;
@@ -15,6 +16,24 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
         eprintln!("  Set [profiles] path in fanatec-tuner.toml to a directory with .pws files.");
     } else {
         println!("{} profile(s) loaded", profiles.len());
+    }
+
+    // Load XML car lists for exact carPath matching.
+    let xml_dir = config.xml.xml_dir();
+    let (xml_cars_ir, xml_prof_ir) = xml_dir
+        .as_ref()
+        .map(|d| carlist::load_for_game(d, "iRacing"))
+        .unwrap_or_default();
+    let (xml_cars_ac, xml_prof_ac) = xml_dir
+        .as_ref()
+        .map(|d| carlist::load_for_game(d, "AC"))
+        .unwrap_or_default();
+    if xml_dir.is_some() {
+        println!(
+            "XML car lists: {} iRacing entries, {} AC entries",
+            xml_prof_ir.len() + xml_cars_ir.len(),
+            xml_prof_ac.len() + xml_cars_ac.len()
+        );
     }
 
     let devices = crate::open_devices();
@@ -49,7 +68,12 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
             if current != last_car {
                 if let Some(detected) = current.as_ref() {
                     print!("[{}] {} / {} → ", now_hms(), detected.game, detected.car);
-                    match find_matching_profile(profiles, &detected.game, &detected.car) {
+                    let xml = if detected.game.starts_with("iRacing") {
+                        (&xml_cars_ir, &xml_prof_ir)
+                    } else {
+                        (&xml_cars_ac, &xml_prof_ac)
+                    };
+                    match find_matching_profile(profiles, detected, xml) {
                         None => println!("no matching profile"),
                         Some(prof) => {
                             println!("applying {}", prof.path.display());
@@ -106,13 +130,44 @@ fn do_apply(dev: &hid::FanatecDevice, prof: &PwsProfile) -> bool {
 
 fn find_matching_profile<'a>(
     profiles: &'a [PwsProfile],
-    game: &str,
-    car: &str,
+    detected: &CarDetected,
+    xml: (&carlist::CarNames, &carlist::ProfileMap),
 ) -> Option<&'a PwsProfile> {
+    let (xml_cars, xml_profiles) = xml;
+
+    // 1. XML ProfileCarsList exact match: carPath → .pws filename
+    if let Some(car_path) = &detected.car_path {
+        if let Some(pws_filename) = xml_profiles.get(car_path.as_str()) {
+            if let Some(p) = profiles.iter().find(|p| {
+                p.path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|n| n == pws_filename)
+                    .unwrap_or(false)
+            }) {
+                return Some(p);
+            }
+        }
+    }
+
+    // 2. XML CarsList: carPath → display name → fuzzy match
+    if let Some(car_path) = &detected.car_path {
+        if let Some(xml_name) = xml_cars.get(car_path.as_str()) {
+            if let Some(p) = fuzzy_match(profiles, &detected.game, xml_name) {
+                return Some(p);
+            }
+        }
+    }
+
+    // 3. Filename-based fuzzy matching on detected car display name
+    fuzzy_match(profiles, &detected.game, &detected.car)
+}
+
+fn fuzzy_match<'a>(profiles: &'a [PwsProfile], game: &str, car: &str) -> Option<&'a PwsProfile> {
     let ng = normalize(game);
     let nc = normalize(car);
 
-    // 1. Exact game + exact car
+    // Exact game + exact car
     if let Some(p) = profiles
         .iter()
         .find(|p| normalize(&p.game) == ng && normalize(&p.car) == nc)
@@ -120,7 +175,7 @@ fn find_matching_profile<'a>(
         return Some(p);
     }
 
-    // 2. Game prefix + exact car
+    // Game prefix + exact car
     if let Some(p) = profiles
         .iter()
         .find(|p| normalize(&p.game).starts_with(&ng) && normalize(&p.car) == nc)
@@ -128,7 +183,7 @@ fn find_matching_profile<'a>(
         return Some(p);
     }
 
-    // 3. Game prefix + profile car contains detected car
+    // Game prefix + profile car contains detected car
     if let Some(p) = profiles
         .iter()
         .find(|p| normalize(&p.game).starts_with(&ng) && normalize(&p.car).contains(&nc))
@@ -136,7 +191,7 @@ fn find_matching_profile<'a>(
         return Some(p);
     }
 
-    // 4. Game prefix + detected car contains profile car (reverse)
+    // Game prefix + detected car contains profile car (reverse)
     profiles
         .iter()
         .find(|p| normalize(&p.game).starts_with(&ng) && nc.contains(&normalize(&p.car)))

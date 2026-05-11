@@ -13,8 +13,11 @@ use super::SharedMem;
 
 const MAP_NAME: &str = "Local\\IRSDKMemMapFileName";
 
+/// Returns `(car_path, car_screen_name)` for the player's car.
+/// `car_path` is the iRacing internal identifier (e.g. "bmwm4gt3") used for
+/// XML matching; `car_screen_name` is the display name shown in-game.
 #[cfg(windows)]
-pub fn car_name() -> Option<String> {
+pub fn car_info() -> Option<(String, String)> {
     let mem = SharedMem::open(MAP_NAME)?;
     let data = mem.bytes();
 
@@ -36,15 +39,15 @@ pub fn car_name() -> Option<String> {
     }
 
     let yaml = std::str::from_utf8(&data[session_off..end]).ok()?;
-    parse_driver_car_name(yaml)
+    parse_driver_info(yaml)
 }
 
 #[cfg(not(windows))]
-pub fn car_name() -> Option<String> {
+pub fn car_info() -> Option<(String, String)> {
     None
 }
 
-fn parse_driver_car_name(yaml: &str) -> Option<String> {
+fn parse_driver_info(yaml: &str) -> Option<(String, String)> {
     // Parse DriverCarIdx value
     let prefix = "DriverCarIdx:";
     let idx_pos = yaml.find(prefix)?;
@@ -52,21 +55,32 @@ fn parse_driver_car_name(yaml: &str) -> Option<String> {
     let car_idx_str = after_key.split(|c: char| !c.is_ascii_digit()).next()?;
     let car_idx: u32 = car_idx_str.parse().ok()?;
 
-    // Find the Drivers block entry for this idx (exact match — not a prefix of a larger number)
+    // Find the Drivers block entry for this idx (exact match)
     let needle = format!("CarIdx: {}", car_idx);
     let entry_pos = find_exact_car_idx(yaml, &needle)?;
 
-    // Find CarScreenName: after this entry
-    let after_entry = &yaml[entry_pos..];
-    let name_prefix = "CarScreenName:";
-    let name_pos = after_entry.find(name_prefix)?;
-    let after_name = &after_entry[name_pos + name_prefix.len()..];
+    // Limit the search to this driver's block (before the next "- CarIdx:").
+    let block_end = yaml[entry_pos + 1..]
+        .find("- CarIdx:")
+        .map(|p| entry_pos + 1 + p)
+        .unwrap_or(yaml.len());
+    let entry = &yaml[entry_pos..block_end];
 
-    let name = after_name.lines().next()?.trim().to_string();
-    if name.is_empty() {
+    let car_name = yaml_value(entry, "CarScreenName")?;
+    let car_path = yaml_value(entry, "CarPath").unwrap_or_default();
+
+    Some((car_path, car_name))
+}
+
+fn yaml_value(text: &str, key: &str) -> Option<String> {
+    let prefix = format!("{}:", key);
+    let pos = text.find(&prefix)?;
+    let after = &text[pos + prefix.len()..];
+    let value = after.lines().next()?.trim().to_string();
+    if value.is_empty() {
         None
     } else {
-        Some(name)
+        Some(value)
     }
 }
 

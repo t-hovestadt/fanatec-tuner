@@ -18,29 +18,32 @@ pub enum AcVariant {
 const EVO_STATIC: &str = "Local\\acevo_pmf_static";
 const AC1_STATIC: &str = "Local\\acpmf_static";
 
+/// Returns `(variant, car_path, display_name)`.
+/// `car_path` is the raw carModel identifier (e.g. "ks_bmw_m4_gt3") used for
+/// XML lookup; `display_name` has underscores replaced with spaces.
 #[cfg(windows)]
-pub fn car_name() -> Option<(AcVariant, String)> {
-    if let Some(name) = try_open(EVO_STATIC) {
-        return Some((AcVariant::Evo, name));
+pub fn car_name() -> Option<(AcVariant, String, String)> {
+    if let Some((path, name)) = try_open(EVO_STATIC) {
+        return Some((AcVariant::Evo, path, name));
     }
-    if let Some(name) = try_open(AC1_STATIC) {
-        return Some((AcVariant::Ac1, name));
+    if let Some((path, name)) = try_open(AC1_STATIC) {
+        return Some((AcVariant::Ac1, path, name));
     }
     None
 }
 
 #[cfg(not(windows))]
-pub fn car_name() -> Option<(AcVariant, String)> {
+pub fn car_name() -> Option<(AcVariant, String, String)> {
     None
 }
 
 #[cfg(windows)]
-fn try_open(map_name: &str) -> Option<String> {
+fn try_open(map_name: &str) -> Option<(String, String)> {
     let mem = SharedMem::open(map_name)?;
     read_car_model(mem.bytes())
 }
 
-fn read_car_model(data: &[u8]) -> Option<String> {
+fn read_car_model(data: &[u8]) -> Option<(String, String)> {
     // carModel is wchar_t[33] at offset 68 = 66 bytes of LE UTF-16
     if data.len() < 68 + 66 {
         return None;
@@ -51,14 +54,10 @@ fn read_car_model(data: &[u8]) -> Option<String> {
         .map(|b| u16::from_le_bytes([b[0], b[1]]))
         .collect();
     let s = String::from_utf16_lossy(&wide);
-    let s = s
-        .trim_end_matches('\0')
-        .replace('_', " ")
-        .trim()
-        .to_string();
-    if s.is_empty() {
-        None
-    } else {
-        Some(s)
+    let car_path = s.trim_end_matches('\0').trim().to_lowercase().to_string();
+    if car_path.is_empty() {
+        return None;
     }
+    let display = car_path.replace('_', " ");
+    Some((car_path, display))
 }

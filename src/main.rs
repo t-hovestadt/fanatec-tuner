@@ -1,3 +1,4 @@
+mod carlist;
 mod config;
 mod games;
 mod hid;

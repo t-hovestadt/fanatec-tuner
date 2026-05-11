@@ -4,7 +4,11 @@ pub mod iracing;
 #[derive(Debug, PartialEq)]
 pub struct CarDetected {
     pub game: String,
+    /// Display name (e.g. "BMW M4 GT3 EVO")
     pub car: String,
+    /// Game-internal identifier used for XML lookup (e.g. "bmwm4gt3" for iRacing,
+    /// "ks_bmw_m4_gt3" for AC). None if not available.
+    pub car_path: Option<String>,
 }
 
 /// Polls each game in priority order: iRacing → AC EVO → AC1/ACC.
@@ -12,20 +16,30 @@ pub struct CarDetected {
 pub fn detect_car() -> Option<CarDetected> {
     #[cfg(windows)]
     {
-        if let Some(name) = iracing::car_name() {
+        if let Some((car_path, car_name)) = iracing::car_info() {
             return Some(CarDetected {
                 game: "iRacing".to_string(),
-                car: name,
+                car: car_name,
+                car_path: if car_path.is_empty() {
+                    None
+                } else {
+                    Some(car_path)
+                },
             });
         }
-        if let Some((variant, name)) = ac::car_name() {
+        if let Some((variant, car_path, car_name)) = ac::car_name() {
             let game = match variant {
                 ac::AcVariant::Evo => "Assetto Corsa EVO",
                 ac::AcVariant::Ac1 => "Assetto Corsa",
             };
             return Some(CarDetected {
                 game: game.to_string(),
-                car: name,
+                car: car_name,
+                car_path: if car_path.is_empty() {
+                    None
+                } else {
+                    Some(car_path)
+                },
             });
         }
     }
