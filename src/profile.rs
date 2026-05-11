@@ -126,7 +126,7 @@ impl PwsProfile {
             (ADDR_DPR, Self::wire_div10(self.dpr)),
             (ADDR_BLI, self.bli),
             (ADDR_SHO, Self::wire_div10(self.sho)),
-            (ADDR_BRF, Self::wire_div10(self.brf)),
+            (ADDR_BRF, self.brf), // BRF is sent as the raw display value, not /10
             (ADDR_FUL, self.ful),
             (ADDR_DRI, self.dri),
             (ADDR_ACP, self.acp),

@@ -403,11 +403,12 @@ pub(crate) fn apply_write(
                     addr, val, after[addr]
                 );
             }
-            // Return immediately if all target params are in place, or on the last attempt.
-            if attempt == 1 || matched == params.len() {
+            // Only retry if fewer than half the params took — a near-full match means
+            // the write went through and any remaining mismatch is an encoding issue.
+            if attempt == 1 || matched * 2 >= params.len() {
                 return Some(after);
             }
-            // First attempt: values unchanged — toggle and retry.
+            // First attempt: most params unchanged — toggle and retry.
         }
     }
     None
