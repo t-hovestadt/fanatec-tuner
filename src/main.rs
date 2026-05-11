@@ -44,6 +44,8 @@ enum Command {
     WriteTest,
     /// Test LED and display control without a game running
     LedTest,
+    /// Persistent-handle write stress: 3 writes on the same open handles, hex-dumped
+    WriteStress,
 }
 
 fn main() {
@@ -71,6 +73,7 @@ fn main() {
         Some(Command::Monitor) => cmd_monitor(&cfg),
         Some(Command::WriteTest) => cmd_write_test(),
         Some(Command::LedTest) => cmd_led_test(),
+        Some(Command::WriteStress) => cmd_write_stress(&cfg),
     }
 }
 
@@ -461,6 +464,134 @@ fn cmd_led_test() {
     let _ = hid::write_report(col03, &led::build_button_intensity_report(&[0u8; 16], true));
 
     println!("\nLED test complete — did you see the LEDs change?");
+}
+
+// ---------------------------------------------------------------------------
+// write-stress — persistent-handle multi-write test
+// ---------------------------------------------------------------------------
+
+fn cmd_write_stress(cfg: &config::Config) {
+    use std::time::Duration;
+
+    let profiles_dir = cfg.profiles.path.as_deref().unwrap_or("profiles");
+
+    // Prefer profiles/CS DD+/iRacing/; fall back to all iRacing profiles under profiles/.
+    let iracing_dir = std::path::Path::new(profiles_dir)
+        .join("CS DD+")
+        .join("iRacing");
+    let mut all = if iracing_dir.exists() {
+        profile::scan_profiles(&iracing_dir)
+    } else {
+        profile::scan_profiles(std::path::Path::new(profiles_dir))
+            .into_iter()
+            .filter(|p| p.game.to_lowercase().contains("iracing"))
+            .collect()
+    };
+    all.sort_by(|a, b| a.car.cmp(&b.car));
+    all.dedup_by(|a, b| a.path == b.path);
+
+    if all.len() < 2 {
+        eprintln!(
+            "error: need at least 2 iRacing profiles — found {} in {}",
+            all.len(),
+            profiles_dir
+        );
+        std::process::exit(1);
+    }
+
+    // Three writes: A → B → A using the same open handles throughout.
+    let pa = &all[0];
+    let pb = &all[1];
+    let sequence: [&profile::PwsProfile; 3] = [pa, pb, pa];
+
+    let devices = open_devices();
+    let col01 = find_col01(&devices);
+    let (idx, initial_buf) = match probe_tuning_collection(&devices) {
+        Some(r) => r,
+        None => {
+            eprintln!("error: no HID collection responded to the tuning request.");
+            std::process::exit(1);
+        }
+    };
+    let col03 = &devices[idx];
+    let col = collection_label(&col03.device_path);
+    println!(
+        "Using {}  ({}, PID 0x{:04X})",
+        col, col03.product_name, col03.product_id
+    );
+    println!("\nInitial state:");
+    print_profile(&parse_tuning_report(&initial_buf));
+
+    let request = build_request_report();
+    let mut success_count = 0usize;
+
+    for (i, prof) in sequence.iter().enumerate() {
+        println!(
+            "\n--- Write {}/3: {} ({}) ---",
+            i + 1,
+            prof.car,
+            prof.path.file_name().unwrap_or_default().to_string_lossy()
+        );
+
+        // Pre-read using the already-open handle.
+        drain_stale_reports(col03);
+        let _ = hid::write_report(col03, &request);
+        let base = match read_tuning_report(col03) {
+            Some(b) => b,
+            None => {
+                eprintln!("  pre-read failed — skipping");
+                continue;
+            }
+        };
+        println!("  read  [0..24]: {}", hex_str(&base[..24]));
+
+        let write_buf = build_full_write_report(&base, &prof.to_params());
+        println!("  write [0..24]: {}", hex_str(&write_buf[..24]));
+
+        if hid::write_report(col03, &write_buf).is_err() {
+            eprintln!("  HID write FAILED");
+            continue;
+        }
+        if let Some(c01) = col01 {
+            send_ack_burst(c01);
+        }
+
+        // Readback on the same handle.
+        drain_stale_reports(col03);
+        let _ = hid::write_report(col03, &request);
+        match read_tuning_report(col03) {
+            None => eprintln!("  readback failed"),
+            Some(after_buf) => {
+                println!("  after [0..24]: {}", hex_str(&after_buf[..24]));
+                print_diff(
+                    &parse_tuning_report(&base),
+                    &parse_tuning_report(&after_buf),
+                );
+                let params = prof.to_params();
+                let matching = params
+                    .iter()
+                    .filter(|&&(addr, val)| after_buf[addr] == val)
+                    .count();
+                if matching == params.len() {
+                    println!("  RESULT: all {} params match target", params.len());
+                    success_count += 1;
+                } else {
+                    println!(
+                        "  RESULT: {}/{} params match target",
+                        matching,
+                        params.len()
+                    );
+                }
+            }
+        }
+
+        if i < sequence.len() - 1 {
+            std::thread::sleep(Duration::from_secs(2));
+        }
+    }
+
+    println!("\n=== Write-stress summary ===");
+    println!("  {}/3 writes verified successfully", success_count);
 }
 
 // ---------------------------------------------------------------------------
