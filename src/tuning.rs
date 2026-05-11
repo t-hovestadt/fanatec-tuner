@@ -190,6 +190,9 @@ pub fn build_full_write_report(
     buf[2] = CMD_WRITE_PARAM;
     // Shift received state: read position i → write position i+1
     buf[3..REPORT_SIZE].copy_from_slice(&base[2..REPORT_SIZE - 1]);
+    // byte 3 (slot/mode byte) must be 0x01 — device silently ignores writes
+    // when this byte is 0x81 (the other toggle state), confirmed empirically.
+    buf[3] = 0x01;
     // Override with new values at write positions
     for &(addr, val) in params {
         buf[addr + 1] = val;

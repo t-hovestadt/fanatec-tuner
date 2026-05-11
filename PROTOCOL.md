@@ -269,13 +269,22 @@ overlay the new values, and send once.
 2. Build write buffer from the read snapshot:
    buf[0]    = 0xFF, buf[1] = 0x03, buf[2] = 0x00 (CMD_WRITE_PARAM)
    buf[3..63] = base[2..62]  (shift read state right by 1)
+   buf[3]    = 0x01          ← REQUIRED: see note below
    buf[addr+1] = encoded_value  (for each param to update)
-3. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61])  ← toggle opens write window
-4. Sleep 500 ms
-5. WriteFile(write_buf)  — single write, all params at once
-6. Sleep 200 ms
-7. Re-send 0x04 request and read back to verify
+3. WriteFile(write_buf)      ← single write, all params at once
+4. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61])  ← toggle to readable mode
+5. Sleep 200 ms
+6. WriteFile([0xFF, 0x03, 0x04, 0x00 × 61])  ← request values
+7. ReadFile → verify
+8. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61])  ← toggle back to writable mode
 ```
+
+**Byte 3 must be `0x01`:** The device silently ignores write reports when
+byte 3 is `0x81`. The readback buffer returns either `0x01` or `0x81` in
+this position depending on the current toggle state. If copied verbatim into
+the write buffer, writes made when the device is in the `0x81` state are
+ignored. Always force `buf[3] = 0x01` after the copy. Confirmed empirically
+across two separate wheels — this is the single most reliable fix.
 
 **Note:** sending each parameter in its own report (one at a time) does not
 work on the DD+ — readback shows no change.

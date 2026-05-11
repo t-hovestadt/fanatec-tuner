@@ -130,10 +130,10 @@ fn cmd_apply(pws_path: &std::path::Path) {
     let params = prof.write_params();
     let write_buf = build_full_write_report(&before_buf, &params);
 
-    match write_with_retry(dev, &write_buf, &params) {
+    match apply_write(dev, &write_buf) {
         Some(after_buf) => print_diff(&before, &parse_tuning_report(&after_buf)),
         None => {
-            eprintln!("error: write did not take effect after 2 attempts");
+            eprintln!("error: could not read back tuning values after write");
             std::process::exit(1);
         }
     }
@@ -332,64 +332,32 @@ fn read_tuning_report(dev: &hid::FanatecDevice) -> Option<[u8; REPORT_SIZE]> {
     None
 }
 
-/// Writes all params to the device using a write→toggle→read retry loop.
+/// Sends a write report and reads back the result.
 ///
-/// The DD+ toggle (CMD 0x06) alternates between two states. One state accepts
-/// writes; the other does not (writes are silently ignored). We don't know
-/// which state the device is currently in, so we try both:
+/// Sequence: write → toggle → 200ms → request → read → toggle (restore).
+/// The toggle after the write puts the device into readable mode; the final
+/// toggle restores writable mode for the next call.
 ///
-///   Attempt 1: write → 200ms → toggle → 200ms → request → read
-///   Attempt 2: write → 200ms → toggle → 200ms → request → read → toggle (restore)
-///
-/// One of the two attempts will be in the writable state. Returns the readback
-/// buffer on success, None if both attempts show no change or the device errors.
-pub(crate) fn write_with_retry(
+/// Byte 3 of write_buf must be 0x01 (enforced by build_full_write_report).
+/// The device silently ignores writes when byte 3 is 0x81.
+pub(crate) fn apply_write(
     dev: &hid::FanatecDevice,
     write_buf: &[u8; REPORT_SIZE],
-    params: &[(usize, u8)],
 ) -> Option<[u8; REPORT_SIZE]> {
     let wake = build_wake_report();
     let request = build_request_report();
-
-    // Attempt 1
     if hid::write_report(dev, write_buf).is_err() {
         return None;
     }
-    std::thread::sleep(std::time::Duration::from_millis(200));
     if hid::write_report(dev, &wake).is_err() {
         return None;
     }
     std::thread::sleep(std::time::Duration::from_millis(200));
     let _ = hid::write_report(dev, &request);
-    if let Some(after) = read_tuning_report(dev) {
-        if params_took_effect(&after, params) {
-            // Restore writable state for the next call.
-            let _ = hid::write_report(dev, &wake);
-            return Some(after);
-        }
-    }
-
-    // Attempt 2 — toggle in attempt 1 put us in the other state; try again.
-    if hid::write_report(dev, write_buf).is_err() {
-        return None;
-    }
-    std::thread::sleep(std::time::Duration::from_millis(200));
-    if hid::write_report(dev, &wake).is_err() {
-        return None;
-    }
-    std::thread::sleep(std::time::Duration::from_millis(200));
-    let _ = hid::write_report(dev, &request);
-    let after2 = read_tuning_report(dev);
-    // Restore writable state regardless of outcome.
+    let after = read_tuning_report(dev);
+    // Restore writable state for the next call.
     let _ = hid::write_report(dev, &wake);
-    match after2 {
-        Some(buf) if params_took_effect(&buf, params) => Some(buf),
-        _ => None,
-    }
-}
-
-fn params_took_effect(buf: &[u8; REPORT_SIZE], params: &[(usize, u8)]) -> bool {
-    params.iter().all(|(addr, val)| buf[*addr] == *val)
+    after
 }
 
 /// Extracts the "col01" / "col02" label from a HID device path.

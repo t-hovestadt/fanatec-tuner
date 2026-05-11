@@ -110,13 +110,13 @@ fn do_apply(dev: &hid::FanatecDevice, prof: &PwsProfile) -> bool {
     let params = prof.write_params();
     let write_buf = build_full_write_report(&before_buf, &params);
 
-    match crate::write_with_retry(dev, &write_buf, &params) {
+    match crate::apply_write(dev, &write_buf) {
         Some(after_buf) => {
             crate::print_diff(&before, &parse_tuning_report(&after_buf));
             true
         }
         None => {
-            eprintln!("  error: write did not take effect after 2 attempts");
+            eprintln!("  error: could not read back tuning values after write");
             false
         }
     }
