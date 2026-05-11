@@ -196,8 +196,8 @@ pub fn build_select_slot_report(slot: u8) -> [u8; REPORT_SIZE] {
 /// shows no change.
 ///
 /// **Write direction offset:** read position i maps to write position i+2.
-/// buf[3] = devId (0x01), buf[4] = UserSetupIndex (0x00 = current slot),
-/// params start at buf[5] = read buf[3] = SEN.
+/// buf[3] = read buf[2] (devId + mode flag — must reflect device's current state),
+/// buf[4] = UserSetupIndex (slot 1), params start at buf[5] = read buf[3] = SEN.
 ///
 /// All bytes not covered by `params` retain the current device-state value from
 /// `base`, preserving any undocumented parameters.
@@ -211,7 +211,7 @@ pub fn build_full_write_report(
     buf[2] = CMD_WRITE_PARAM;
     // Shift received state: read position i → write position i+2
     buf[5..REPORT_SIZE].copy_from_slice(&base[3..REPORT_SIZE - 2]);
-    buf[3] = 0x01; // devId — must not be 0x81 (device silently ignores writes)
+    buf[3] = base[2]; // devId + mode flag — copy from read response so device accepts the write
     buf[4] = 0x01; // UserSetupIndex = slot 1
     for &(addr, val) in params {
         buf[addr + 2] = val;
