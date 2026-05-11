@@ -24,11 +24,13 @@ pub const ADDR_FUL: usize = 0x16;
 pub const REPORT_ID: u8 = 0xFF;
 pub const TUNING_MARKER: u8 = 0x03;
 
-pub const CMD_REQUEST_VALUES: u8 = 0x04;
+pub const CMD_REQUEST_VALUES: u8 = 0x02;
 pub const CMD_SELECT_SLOT: u8 = 0x01;
 pub const CMD_WRITE_PARAM: u8 = 0x00;
 #[allow(dead_code)]
 pub const CMD_TOGGLE_ADVANCED: u8 = 0x06;
+#[allow(dead_code)]
+pub const CMD_FACTORY_RESET: u8 = 0x04; // 0x04 = factory reset — not the read command
 
 /// Parsed tuning values, all in display units.
 ///

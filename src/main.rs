@@ -307,6 +307,7 @@ fn request_and_poll(
     request: &[u8; REPORT_SIZE],
 ) -> Option<[u8; REPORT_SIZE]> {
     std::thread::sleep(std::time::Duration::from_millis(500));
+    drain_stale_reports(dev);
     if hid::write_report(dev, request).is_err() {
         return None;
     }
