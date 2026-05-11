@@ -173,6 +173,18 @@ cargo clippy --target x86_64-pc-windows-gnu -- -D warnings
 
 ---
 
+## Planned features
+
+- **Assetto Corsa / EVO / ACC monitor support** — shared-memory car detection
+  is implemented; wiring into the monitor loop is pending.
+- **LED and display control** — `.pws` profiles contain per-rim LED
+  configurations (`RevLedProfileWheel`, `ButtonLedProfile`, `DisplayLedProfile`,
+  `ITMPRofile`). LED control will be wheel-specific: the attached rim will be
+  detected and matched against the profile's `WheelType` to select the correct
+  section.
+
+---
+
 ## Credits
 
 - **Maurice Böschen** — FanaLab tuning profiles for 900+ cars

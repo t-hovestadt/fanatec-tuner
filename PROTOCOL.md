@@ -288,3 +288,31 @@ across two separate wheels — this is the single most reliable fix.
 
 **Note:** sending each parameter in its own report (one at a time) does not
 work on the DD+ — readback shows no change.
+
+---
+
+## Wheel type identifiers
+
+`.pws` profile files contain a `<Device>` tag with `BaseType` and `WheelType`
+attributes identifying which base and rim the profile was tuned for:
+
+```xml
+<Device BaseType="12" WheelType="19" SWType="10" PedalType="4" .../>
+```
+
+Known values observed so far:
+
+| Attribute | Value | Hardware |
+|-----------|-------|----------|
+| BaseType | 12 | ClubSport DD+ |
+| WheelType | 19 | Observed in CS DD+ profiles |
+| WheelType | 15 | Observed in P DD2 profiles |
+
+Full mapping is not yet determined. These values are extracted by the profile
+parser (`PwsProfile::base_type` / `::wheel_type`) for future LED and display
+control.
+
+**Relevance for LED/ITM control:** profiles contain wheel-specific sections
+(`RevLedProfileWheel`, `ButtonLedProfile`, `DisplayLedProfile`, `ITMPRofile`)
+that vary by rim. When LED control is implemented, `WheelType` will be matched
+against the detected attached rim to select the correct section.

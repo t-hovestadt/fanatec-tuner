@@ -11,6 +11,16 @@ pub struct PwsProfile {
     pub car: String,
     pub path: PathBuf,
 
+    /// BaseType from the <Device> tag (e.g. 12 = CS DD+). Preserved for future
+    /// LED/display matching — profiles carry wheel-specific LED sections.
+    #[allow(dead_code)]
+    pub base_type: Option<u8>,
+    /// WheelType from the <Device> tag (e.g. 19 = specific rim model). Used to
+    /// select the correct RevLedProfile / ButtonLedProfile / ITMProfile section
+    /// when LED control is implemented.
+    #[allow(dead_code)]
+    pub wheel_type: Option<u8>,
+
     pub sen: u8, // raw wire byte — sent to device as-is
     pub ff: u8,
     pub ffs: u8,
@@ -68,6 +78,19 @@ impl PwsProfile {
         buf[ADDR_ACP + 1] = self.acp;
         buf
     }
+}
+
+/// Extract a numeric attribute from a named XML tag without a full XML crate.
+/// Finds the first `<tag_name ` occurrence and returns the parsed u8 value of `attr`.
+fn xml_attr_u8(text: &str, tag_name: &str, attr: &str) -> Option<u8> {
+    let needle = format!("<{} ", tag_name);
+    let tag_start = text.find(&needle)?;
+    let tag_end = text[tag_start..].find('>')?;
+    let tag_text = &text[tag_start..tag_start + tag_end + 1];
+    let attr_needle = format!("{}=\"", attr);
+    let start = tag_text.find(&attr_needle)? + attr_needle.len();
+    let end = tag_text[start..].find('"')?;
+    tag_text[start..start + end].parse().ok()
 }
 
 /// Extracts `(game, car)` from a .pws filename stem.
@@ -130,6 +153,8 @@ pub fn parse_pws(path: &Path) -> Result<PwsProfile, String> {
         game,
         car,
         path: path.to_path_buf(),
+        base_type: xml_attr_u8(&text, "Device", "BaseType"),
+        wheel_type: xml_attr_u8(&text, "Device", "WheelType"),
         sen: get_u8("SEN"),
         ff: get_u8("FF"),
         ffs: get_u8("FFS"),
