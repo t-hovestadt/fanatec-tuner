@@ -284,6 +284,7 @@ impl SdkDevice<'_> {
 // ---------------------------------------------------------------------------
 
 /// Apply `params` via FSTmDataSet + FSTmDataSave, then read back the result.
+#[allow(dead_code)]
 pub fn apply_profile(
     dev: &SdkDevice<'_>,
     params: &[(i32, i32)], // (SDK_PARAM_*, wire_value)

@@ -237,13 +237,6 @@ pub(crate) fn open_devices() -> Vec<hid::FanatecDevice> {
 /// Working collection path cached within the process lifetime.
 static TUNING_COLLECTION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
-/// Fanatec SDK DLL, loaded once on first use.
-static SDK: std::sync::OnceLock<Option<sdk::SdkLib>> = std::sync::OnceLock::new();
-
-fn get_sdk() -> Option<&'static sdk::SdkLib> {
-    SDK.get_or_init(sdk::load_sdk).as_ref()
-}
-
 /// Tries each collection in turn. Returns device index + raw 64-byte tuning
 /// report from the first collection that accepts a read request and responds.
 ///
@@ -377,62 +370,33 @@ fn drain_stale_reports(dev: &hid::FanatecDevice) {
     while hid::read_report(dev, &mut buf, 50).is_ok() {}
 }
 
-/// Writes a profile to the device and reads back for verification.
+/// Writes a profile to the device via raw HID and reads back for verification.
 ///
-/// Tries the Fanatec SDK DLL first (FSTmDataSet + FSTmDataSave); falls back to
-/// raw HID read-modify-write if the SDK is unavailable or fails.
-///
-/// Returns the readback buffer if available. Returns None only if both paths
-/// fail at the HID write level; readback failure is non-fatal.
+/// Sequence: drain → READ → build write (FanaBridge struct offsets) → WRITE → ACK burst → drain → READ → readback.
+/// Returns the readback buffer, or None if the HID write itself fails.
 pub(crate) fn apply_write(
     col03: &hid::FanatecDevice,
     col01: Option<&hid::FanatecDevice>,
     prof: &profile::PwsProfile,
 ) -> Option<[u8; REPORT_SIZE]> {
-    // SDK path: FSTmDataSet + FSTmDataSave (more reliable than raw HID on some firmware).
-    if let Some(sdk_lib) = get_sdk() {
-        match sdk_lib.connect(col03.product_id) {
-            Err(e) => eprintln!("  SDK connect failed ({}), using raw HID", e),
-            Ok(sdk_dev) => {
-                let params: Vec<(i32, i32)> = prof
-                    .to_params()
-                    .into_iter()
-                    .map(|(addr, val)| (addr as i32, val as i32))
-                    .collect();
-                match sdk::apply_profile(&sdk_dev, &params) {
-                    Ok(buf) => return Some(buf),
-                    Err(e) => eprintln!("  SDK write failed ({}), using raw HID", e),
-                }
-            }
-        }
-    }
-
-    // Raw HID fallback — FanaBridge-exact sequence, no toggles.
-    println!(
-        "\n  [apply] raw HID path  handle=0x{:016X}",
-        col03.handle as usize
-    );
+    println!("\n  [apply] handle=0x{:016X}", col03.handle as usize);
     match hid::get_hid_caps(col03) {
         Some(c) => println!(
-            "  [apply] HID caps: InputReportByteLength={}  OutputReportByteLength={}  FeatureReportByteLength={}",
+            "  [apply] HID caps: in={}  out={}  feat={}",
             c.input_report_len, c.output_report_len, c.feature_report_len
         ),
         None => println!("  [apply] HID caps: unavailable"),
     }
-    println!(
-        "  [apply] send_len we use = {} bytes (buf[0]=0xFF as report ID)",
-        REPORT_SIZE
-    );
 
     let request = build_request_report();
     drain_stale_reports(col03);
 
-    println!("  [apply] pre-read: sending READ request [FF 03 02]");
+    println!("  [apply] pre-read: sending [FF 03 02]");
     let _ = hid::write_report(col03, &request);
     let base_opt = read_tuning_report_traced(col03);
     let write_buf = match base_opt {
         Some(base) => {
-            println!("  [apply] pre-read OK — building write from device state");
+            println!("  [apply] read  buf[0..27]: {}", hex_str(&base[..27]));
             build_fb_write_report(&base, &prof.to_fb_params())
         }
         None => {
@@ -440,8 +404,8 @@ pub(crate) fn apply_write(
             prof.to_write_report()
         }
     };
+    println!("  [apply] write buf[0..27]: {}", hex_str(&write_buf[..27]));
 
-    println!("  [apply] sending WRITE:");
     if hid::write_report_traced(col03, &write_buf).is_err() {
         println!("  [apply] WRITE FAILED — aborting");
         return None;
@@ -453,8 +417,7 @@ pub(crate) fn apply_write(
         println!("  [apply] ACK burst sent on col01");
     }
 
-    // Readback to verify.
-    println!("  [apply] sending readback READ request");
+    println!("  [apply] readback: sending [FF 03 02]");
     drain_stale_reports(col03);
     let _ = hid::write_report(col03, &request);
     let after = read_tuning_report_traced(col03);
