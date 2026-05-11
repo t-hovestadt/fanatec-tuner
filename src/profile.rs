@@ -1,5 +1,20 @@
 use std::path::{Path, PathBuf};
 
+/// RPM-LED profile parsed from the `<RevLedProfileWheel>` section of a .pws file.
+/// Stored for future LED control — not yet used by the monitor loop.
+#[allow(dead_code)]
+#[derive(Debug, Clone, Default)]
+pub struct RevLedProfile {
+    /// Per-LED RPM activation thresholds (one per LED, up to 9).
+    pub rpm_thresholds: Vec<u32>,
+    /// ColorIndex per LED (see `led::color_index_to_rgb`).
+    pub colors: Vec<u8>,
+    /// RPM above which the strip flashes.
+    pub flash_threshold: u32,
+    /// Flash period in milliseconds.
+    pub flash_period_ms: u32,
+}
+
 /// Tuning values parsed from a .pws file.
 /// All fields use display units (same as the FanaLab JSON).
 /// Wire encoding differs for some params — see `wire_*` helpers below.
@@ -20,6 +35,10 @@ pub struct PwsProfile {
     /// when LED control is implemented.
     #[allow(dead_code)]
     pub wheel_type: Option<u8>,
+    /// Rev LED strip profile from <RevLedProfileWheel>. Parsed for future use;
+    /// not yet applied by the monitor loop.
+    #[allow(dead_code)]
+    pub rev_led: Option<RevLedProfile>,
 
     pub sen: u8, // raw wire byte — sent to device as-is
     pub ff: u8,
@@ -78,6 +97,56 @@ impl PwsProfile {
         buf[ADDR_ACP + 1] = self.acp;
         buf
     }
+}
+
+/// Parse the `<RevLedProfileWheel>` section from .pws XML text.
+/// Returns None if the section is absent or its JSON cannot be parsed.
+fn parse_rev_led(text: &str) -> Option<RevLedProfile> {
+    let section_start = text.find("<RevLedProfileWheel>")?;
+    let json_offset = text[section_start..].find("<JSON>")?;
+    let json_start = section_start + json_offset + "<JSON>".len();
+    let json_end = text[json_start..].find("</JSON>")?;
+    let json_str = &text[json_start..json_start + json_end];
+
+    let v: serde_json::Value = serde_json::from_str(json_str).ok()?;
+
+    let rpm_thresholds = v
+        .get("RPMRawThreshold")
+        .and_then(|a| a.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|x| x.as_u64().map(|n| n as u32))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let colors = v
+        .get("ColorRaw")
+        .and_then(|cr| cr.get("Colors"))
+        .and_then(|a| a.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|x| x.as_u64().map(|n| n as u8))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let flash_threshold = v
+        .get("RPMFlashRawThreshold")
+        .and_then(|x| x.as_u64())
+        .unwrap_or(0) as u32;
+
+    let flash_period_ms = v
+        .get("PeriodFlashRaw")
+        .and_then(|x| x.as_u64())
+        .unwrap_or(0) as u32;
+
+    Some(RevLedProfile {
+        rpm_thresholds,
+        colors,
+        flash_threshold,
+        flash_period_ms,
+    })
 }
 
 /// Extract a numeric attribute from a named XML tag without a full XML crate.
@@ -155,6 +224,7 @@ pub fn parse_pws(path: &Path) -> Result<PwsProfile, String> {
         path: path.to_path_buf(),
         base_type: xml_attr_u8(&text, "Device", "BaseType"),
         wheel_type: xml_attr_u8(&text, "Device", "WheelType"),
+        rev_led: parse_rev_led(&text),
         sen: get_u8("SEN"),
         ff: get_u8("FF"),
         ffs: get_u8("FFS"),

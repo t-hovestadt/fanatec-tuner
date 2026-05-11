@@ -1,7 +1,9 @@
 mod carlist;
 mod config;
+mod display;
 mod games;
 mod hid;
+mod led;
 mod monitor;
 mod profile;
 mod tuning;
@@ -40,6 +42,8 @@ enum Command {
     Monitor,
     /// Systematically test 8 toggle+write sequences to find the correct write protocol
     WriteTest,
+    /// Test LED and display control without a game running
+    LedTest,
 }
 
 fn main() {
@@ -66,6 +70,7 @@ fn main() {
         Some(Command::Diag) => cmd_diag(),
         Some(Command::Monitor) => cmd_monitor(&cfg),
         Some(Command::WriteTest) => cmd_write_test(),
+        Some(Command::LedTest) => cmd_led_test(),
     }
 }
 
@@ -128,8 +133,9 @@ fn cmd_apply(pws_path: &std::path::Path) {
     );
 
     let before = parse_tuning_report(&before_buf);
+    let col01 = find_col01(&devices);
 
-    match apply_write(dev, &prof) {
+    match apply_write(dev, col01, &prof) {
         Some(after_buf) => print_diff(&before, &parse_tuning_report(&after_buf)),
         None => println!("applied (unverified — readback failed)"),
     }
@@ -328,31 +334,64 @@ fn read_tuning_report(dev: &hid::FanatecDevice) -> Option<[u8; REPORT_SIZE]> {
     None
 }
 
+/// Find the col01 HID collection (display / ACK endpoint) among opened devices.
+pub(crate) fn find_col01(devices: &[hid::FanatecDevice]) -> Option<&hid::FanatecDevice> {
+    devices
+        .iter()
+        .find(|d| d.device_path.to_lowercase().contains("col01"))
+}
+
+// ACK burst packets sent on col01 after every tuning write (FanaBridge protocol).
+const ACK_ON: [u8; 8] = [0x01, 0xF8, 0x09, 0x01, 0x06, 0xFF, 0x02, 0x00];
+const ACK_OFF: [u8; 8] = [0x01, 0xF8, 0x09, 0x01, 0x06, 0x00, 0x00, 0x00];
+
+/// Send 4 ON/OFF pulses on col01 after a tuning write (matches FanaBridge behaviour).
+fn send_ack_burst(col01: &hid::FanatecDevice) {
+    for _ in 0..4 {
+        let _ = hid::write_raw(col01, &ACK_ON);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        let _ = hid::write_raw(col01, &ACK_OFF);
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+}
+
+/// Drain any stale input reports buffered before a fresh readback request.
+fn drain_stale_reports(dev: &hid::FanatecDevice) {
+    let mut buf = [0u8; REPORT_SIZE];
+    while hid::read_report(dev, &mut buf, 50).is_ok() {}
+}
+
 /// Writes a profile to the device and optionally reads back for verification.
 ///
 /// Builds the write report directly from the profile — no device read required
 /// before calling this. Sequence:
-///   write → 200ms → toggle → 200ms → request → read → toggle (restore)
+///   write → ack burst (col01) → 200ms → toggle → 200ms → drain → request → read → toggle
 ///
 /// Returns the readback buffer if available. Returns None only if the HID
-/// write itself fails; readback failure is non-fatal and printed as a warning.
+/// write itself fails; readback failure is non-fatal.
 pub(crate) fn apply_write(
-    dev: &hid::FanatecDevice,
+    col03: &hid::FanatecDevice,
+    col01: Option<&hid::FanatecDevice>,
     prof: &profile::PwsProfile,
 ) -> Option<[u8; REPORT_SIZE]> {
     let write_buf = prof.to_write_report();
     let wake = build_wake_report();
     let request = build_request_report();
-    if hid::write_report(dev, &write_buf).is_err() {
+    if hid::write_report(col03, &write_buf).is_err() {
         return None;
     }
+    if let Some(c01) = col01 {
+        send_ack_burst(c01);
+    }
     std::thread::sleep(std::time::Duration::from_millis(200));
-    let _ = hid::write_report(dev, &wake);
+    let _ = hid::write_report(col03, &wake);
     std::thread::sleep(std::time::Duration::from_millis(200));
-    let _ = hid::write_report(dev, &request);
-    let after = read_tuning_report(dev);
+    // Drain stale input before requesting fresh values.
+    drain_stale_reports(col03);
+    let _ = hid::write_report(col03, &request);
+    let after = read_tuning_report(col03);
     // Restore writable state for the next call.
-    let _ = hid::write_report(dev, &wake);
+    let _ = hid::write_report(col03, &wake);
     after
 }
 
@@ -369,6 +408,96 @@ pub(crate) fn collection_label(path: &str) -> String {
         return path[start..end.min(start + 5)].to_string();
     }
     "collection".to_string()
+}
+
+// ---------------------------------------------------------------------------
+// led-test — exercise Rev LEDs, display, and button LEDs
+// ---------------------------------------------------------------------------
+
+fn cmd_led_test() {
+    use std::time::Duration;
+
+    let devices = open_devices();
+
+    // col03 — LED + tuning endpoint (probe confirms it responds)
+    let (idx, _) = match probe_tuning_collection(&devices) {
+        Some(r) => r,
+        None => {
+            eprintln!("error: no HID collection responded to the tuning request.");
+            std::process::exit(1);
+        }
+    };
+    let col03 = &devices[idx];
+
+    // col01 — display endpoint
+    let col01 = find_col01(&devices);
+    if col01.is_none() {
+        println!("warning: col01 not found — display test will be skipped");
+    }
+
+    println!("LED test — watch the wheel!\n");
+
+    // ── a. All 9 Rev LEDs green ──────────────────────────────────────────────
+    println!("[1/6] Rev LEDs: all green");
+    let green = led::rgb_to_rgb565(0, 255, 0);
+    let _ = hid::write_report(col03, &led::build_rev_led_report(&[green; 9]));
+    std::thread::sleep(Duration::from_secs(2));
+
+    // ── b. Rev LED sweep: green / yellow / red ───────────────────────────────
+    println!("[2/6] Rev LEDs: green-yellow-red sweep");
+    let yellow = led::rgb_to_rgb565(255, 255, 0);
+    let red = led::rgb_to_rgb565(255, 0, 0);
+    let sweep = [green, green, green, yellow, yellow, yellow, red, red, red];
+    let _ = hid::write_report(col03, &led::build_rev_led_report(&sweep));
+    std::thread::sleep(Duration::from_secs(2));
+
+    // ── c. Rev LEDs off ──────────────────────────────────────────────────────
+    let _ = hid::write_report(col03, &led::build_rev_led_report(&[0u16; 9]));
+
+    // ── d. Display ───────────────────────────────────────────────────────────
+    if let Some(c01) = col01 {
+        println!("[3/6] Display: 123");
+        let _ = hid::write_raw(
+            c01,
+            &display::build_display_report(
+                display::digit_to_segment(1),
+                display::digit_to_segment(2),
+                display::digit_to_segment(3),
+            ),
+        );
+        std::thread::sleep(Duration::from_secs(2));
+
+        println!("[4/6] Display: gear 5");
+        let _ = hid::write_raw(c01, &display::build_gear_display(5));
+        std::thread::sleep(Duration::from_secs(2));
+
+        println!("      Display: clear");
+        let _ = hid::write_raw(
+            c01,
+            &display::build_display_report(
+                display::SEG_BLANK,
+                display::SEG_BLANK,
+                display::SEG_BLANK,
+            ),
+        );
+    } else {
+        println!("[3/6] Display: skipped (col01 not found)");
+        println!("[4/6] Display: skipped");
+    }
+
+    // ── e. Button LEDs: all white, intensity 4 ───────────────────────────────
+    println!("[5/6] Button LEDs: all white (intensity 4)");
+    let white = led::rgb_to_rgb565(255, 255, 255);
+    let _ = hid::write_report(col03, &led::build_button_color_report(&[white; 12], false));
+    let _ = hid::write_report(col03, &led::build_button_intensity_report(&[4u8; 16], true));
+    std::thread::sleep(Duration::from_secs(2));
+
+    // ── f. Button LEDs off ───────────────────────────────────────────────────
+    println!("[6/6] Button LEDs: off");
+    let _ = hid::write_report(col03, &led::build_button_color_report(&[0u16; 12], false));
+    let _ = hid::write_report(col03, &led::build_button_intensity_report(&[0u8; 16], true));
+
+    println!("\nLED test complete — did you see the LEDs change?");
 }
 
 // ---------------------------------------------------------------------------

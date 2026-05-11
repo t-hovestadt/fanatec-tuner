@@ -37,6 +37,7 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
     let (xml_cars_ac, xml_prof_ac) = carlist::load_for_game(&xml_candidates, "AC");
 
     let devices = crate::open_devices();
+    let col01 = crate::find_col01(&devices);
     let mut dev_idx = match crate::probe_tuning_collection(&devices) {
         Some((idx, _)) => idx,
         None => {
@@ -49,6 +50,9 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
         "Using {}  ({}, PID 0x{:04X})",
         col, devices[dev_idx].product_name, devices[dev_idx].product_id
     );
+    if col01.is_some() {
+        println!("col01 (display/ACK) found");
+    }
     println!("Monitoring — press Ctrl-C to stop\n");
 
     let interval = Duration::from_secs(config.monitor.scan_interval_secs());
@@ -77,14 +81,14 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
                         None => println!("no matching profile"),
                         Some(prof) => {
                             println!("applying {}", prof.path.display());
-                            if !do_apply(&devices[dev_idx], prof) {
+                            if !do_apply(&devices[dev_idx], col01, prof) {
                                 // Write failed — re-probe with existing handles to recover
                                 // advanced mode, then retry once.
                                 eprintln!("  re-probing after write failure…");
                                 match crate::probe_tuning_collection(&devices) {
                                     Some((idx, _)) => {
                                         dev_idx = idx;
-                                        do_apply(&devices[dev_idx], prof);
+                                        do_apply(&devices[dev_idx], col01, prof);
                                     }
                                     None => {
                                         eprintln!("  error: device not responding after re-probe")
@@ -118,8 +122,12 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
 
 /// Applies the profile to the device. Returns false only on a hard HID write
 /// error (caller re-probes); readback failure is non-fatal.
-fn do_apply(dev: &hid::FanatecDevice, prof: &PwsProfile) -> bool {
-    match crate::apply_write(dev, prof) {
+fn do_apply(
+    col03: &hid::FanatecDevice,
+    col01: Option<&hid::FanatecDevice>,
+    prof: &PwsProfile,
+) -> bool {
+    match crate::apply_write(col03, col01, prof) {
         Some(_) => true,
         None => {
             eprintln!("  applied (unverified)");
