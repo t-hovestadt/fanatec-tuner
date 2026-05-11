@@ -343,6 +343,11 @@ pub(crate) fn apply_write(
     let request = build_request_report();
     let params = prof.to_params();
 
+    println!(
+        "  [apply] profile: SEN=0x{:02X} FF={} NDP={} NFR={} FEI={}",
+        prof.sen, prof.ff, prof.ndp, prof.nfr, prof.fei
+    );
+
     for attempt in 0..2u8 {
         if attempt == 1 {
             // Params didn't take — toggle advanced mode and retry.
@@ -358,6 +363,17 @@ pub(crate) fn apply_write(
         };
 
         let write_buf = build_fb_write_report(&base, &params);
+        println!(
+            "  [apply] attempt {} {}: devId=0x{:02X} buf[3..8]= {:02X} {:02X} {:02X} {:02X} {:02X}",
+            attempt + 1,
+            if attempt == 0 { "" } else { "(retry)" },
+            write_buf[3],
+            write_buf[3],
+            write_buf[4],
+            write_buf[5],
+            write_buf[6],
+            write_buf[7],
+        );
         if hid::write_report(col03, &write_buf).is_err() {
             eprintln!("error: HID write failed");
             return None;
@@ -374,6 +390,19 @@ pub(crate) fn apply_write(
                 .iter()
                 .filter(|&&(addr, val)| after[addr] == val)
                 .count();
+            println!(
+                "  [apply] attempt {} {}: match={}/{}",
+                attempt + 1,
+                if attempt == 0 { "" } else { "(retry)" },
+                matched,
+                params.len()
+            );
+            if let Some(&(addr, val)) = params.iter().find(|&&(addr, val)| after[addr] != val) {
+                println!(
+                    "  [apply] first mismatch: addr=0x{:02X} expected=0x{:02X} got=0x{:02X}",
+                    addr, val, after[addr]
+                );
+            }
             if attempt == 1 || matched == params.len() {
                 return Some(after);
             }
