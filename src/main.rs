@@ -265,10 +265,14 @@ pub(crate) fn probe_tuning_collection(
         drain_stale_reports(dev);
 
         println!(
-            "\n  [probe] handle=0x{:016X}  sending READ [FF 03 02]: {}",
+            "\n  [probe] handle=0x{:016X}  toggle [FF 03 06] then READ [FF 03 02]",
             dev.handle as usize,
-            hex_str(&request[..10])
         );
+
+        // Toggle advanced mode so the device enters its writable state.
+        let wake = build_wake_report();
+        let _ = hid::write_report(dev, &wake);
+        std::thread::sleep(std::time::Duration::from_millis(200));
 
         // Bail immediately if the collection refuses writes.
         if hid::write_report(dev, &request).is_err() {

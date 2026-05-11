@@ -193,6 +193,12 @@ pub fn build_select_slot_report(slot: u8) -> [u8; REPORT_SIZE] {
 /// `fb_params` is a slice of `(struct_offset, wire_value)` pairs; the overlay
 /// is applied as `buf[4 + struct_offset] = wire_value`.
 /// Use with `PwsProfile::to_fb_params()`.
+///
+/// The read response layout is: [FF 03 devId SEN FF SHO ...]
+/// The write layout adds a Slot byte that is absent from the read response:
+///   [FF 03 00 devId Slot SEN FF SHO ...]
+/// So after copying devId from the read response we shift the payload right
+/// by one to open the Slot slot, then insert 0x01.
 pub fn build_fb_write_report(
     base: &[u8; REPORT_SIZE],
     fb_params: &[(usize, u8)],
@@ -201,7 +207,13 @@ pub fn build_fb_write_report(
     buf[0] = REPORT_ID;
     buf[1] = TUNING_MARKER;
     buf[2] = CMD_WRITE_PARAM;
+    // Copy readBuf[2..62] → writeBuf[3..63]: places devId at buf[3], SEN at buf[4].
     buf[3..63].copy_from_slice(&base[2..62]);
+    // The write layout has an extra Slot byte at buf[4] that the read response omits.
+    // Shift buf[4..62] → buf[5..63] to open the slot, then insert UserSetupIndex = 1.
+    buf.copy_within(4..63, 5);
+    buf[4] = 0x01; // UserSetupIndex (slot 1)
+                   // Overlay profile values: buf[4 + struct_offset] = wire_value.
     for &(offset, val) in fb_params {
         buf[4 + offset] = val;
     }
