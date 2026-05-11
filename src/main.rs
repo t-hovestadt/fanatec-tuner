@@ -401,7 +401,7 @@ pub(crate) fn apply_write(
     let write_buf = match base_opt {
         Some(base) => {
             println!("  [apply] read  buf[0..27]: {}", hex_str(&base[..27]));
-            build_fb_write_report(&base, &prof.to_fb_params())
+            build_fb_write_report(&base, &prof.to_params())
         }
         None => {
             println!("  [apply] pre-read FAILED — building write from scratch");
