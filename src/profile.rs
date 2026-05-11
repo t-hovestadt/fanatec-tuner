@@ -56,7 +56,7 @@ pub struct PwsProfile {
     pub dpr: u8,
     pub bli: u8, // 101 = OFF
     pub sho: u8, // display 0–100; wire = display / 10
-    pub brf: u8, // display 0–100; wire = display / 10
+    pub brf: u8, // display 0–100; wire = raw display value (NOT /10)
     pub ful: u8, // 0 = OFF
     pub dri: u8,
     pub acp: u8, // JSON key "APM"

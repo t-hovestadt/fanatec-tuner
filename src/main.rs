@@ -361,6 +361,7 @@ pub(crate) fn apply_write(
             Some(b) => b,
             None => continue,
         };
+        let dev_id = base[2];
 
         let write_buf = build_fb_write_report(&base, &params);
         println!(
@@ -403,10 +404,13 @@ pub(crate) fn apply_write(
                     addr, val, after[addr]
                 );
             }
-            if attempt == 1 || matched == params.len() {
+            // Return if all params matched, OR the device was in 0x01 (writable) mode —
+            // meaning the write was accepted and toggling now would flip back to 0x81.
+            // Only retry with toggle when devId=0x81 (device rejected the write).
+            if matched == params.len() || dev_id != 0x81 || attempt == 1 {
                 return Some(after);
             }
-            // First attempt: at least one param didn't take — toggle and retry.
+            // devId=0x81 and not all params landed — toggle and retry.
         }
     }
     None
