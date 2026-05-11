@@ -364,9 +364,10 @@ fn drain_stale_reports(dev: &hid::FanatecDevice) {
 
 /// Writes a profile to the device and optionally reads back for verification.
 ///
-/// Builds the write report directly from the profile — no device read required
-/// before calling this. Sequence:
-///   write → ack burst (col01) → 200ms → toggle → 200ms → drain → request → read → toggle
+/// Pre-reads current device state for read-modify-write; falls back to a
+/// scratch write if the pre-read fails. Sequence:
+///   drain → request → pre-read → write → ack burst → 200ms → toggle → 200ms →
+///   drain → request → readback → toggle
 ///
 /// Returns the readback buffer if available. Returns None only if the HID
 /// write itself fails; readback failure is non-fatal.
@@ -375,9 +376,15 @@ pub(crate) fn apply_write(
     col01: Option<&hid::FanatecDevice>,
     prof: &profile::PwsProfile,
 ) -> Option<[u8; REPORT_SIZE]> {
-    let write_buf = prof.to_write_report();
     let wake = build_wake_report();
     let request = build_request_report();
+    // Pre-read current state; fall back to scratch write if unavailable.
+    drain_stale_reports(col03);
+    let _ = hid::write_report(col03, &request);
+    let write_buf = match read_tuning_report(col03) {
+        Some(base) => build_full_write_report(&base, &prof.to_params()),
+        None => prof.to_write_report(),
+    };
     if hid::write_report(col03, &write_buf).is_err() {
         return None;
     }

@@ -101,6 +101,35 @@ impl PwsProfile {
         buf[ADDR_ACP + 2] = self.acp;
         buf
     }
+
+    /// Returns all tuning values as `(ADDR_*, wire_value)` pairs for use with
+    /// `build_full_write_report`. The +2 write-offset is applied by that function.
+    pub fn to_params(&self) -> Vec<(usize, u8)> {
+        use crate::tuning::{
+            ADDR_ACP, ADDR_BLI, ADDR_BRF, ADDR_DPR, ADDR_DRI, ADDR_FEI, ADDR_FF, ADDR_FFS,
+            ADDR_FOR, ADDR_FUL, ADDR_INT, ADDR_NDP, ADDR_NFR, ADDR_NIN, ADDR_SEN, ADDR_SHO,
+            ADDR_SPR,
+        };
+        vec![
+            (ADDR_SEN, self.sen),
+            (ADDR_FF, self.ff),
+            (ADDR_FFS, self.ffs),
+            (ADDR_NDP, self.ndp),
+            (ADDR_NFR, self.nfr),
+            (ADDR_NIN, self.nin),
+            (ADDR_INT, self.int_),
+            (ADDR_FEI, self.fei),
+            (ADDR_FOR, Self::wire_div10(self.for_)),
+            (ADDR_SPR, Self::wire_div10(self.spr)),
+            (ADDR_DPR, Self::wire_div10(self.dpr)),
+            (ADDR_BLI, self.bli),
+            (ADDR_SHO, Self::wire_div10(self.sho)),
+            (ADDR_BRF, Self::wire_div10(self.brf)),
+            (ADDR_FUL, self.ful),
+            (ADDR_DRI, self.dri),
+            (ADDR_ACP, self.acp),
+        ]
+    }
 }
 
 // ── XML helpers ──────────────────────────────────────────────────────────────
@@ -417,7 +446,9 @@ pub fn scan_recommended_profiles(settings_dir: &Path) -> Vec<PwsProfile> {
             {
                 match parse_pws(&path) {
                     Ok(mut p) => {
-                        p.recommended = true;
+                        if p.car.is_empty() {
+                            p.recommended = true;
+                        }
                         out.push(p);
                     }
                     Err(e) => eprintln!("warning: skipping recommended {}: {}", path.display(), e),
