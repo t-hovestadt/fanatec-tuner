@@ -189,6 +189,25 @@ pub fn build_select_slot_report(slot: u8) -> [u8; REPORT_SIZE] {
     buf
 }
 
+/// Builds a 64-byte write report using FanaBridge struct offsets.
+/// `fb_params` is a slice of `(struct_offset, wire_value)` pairs; the overlay
+/// is applied as `buf[4 + struct_offset] = wire_value`.
+/// Use with `PwsProfile::to_fb_params()`.
+pub fn build_fb_write_report(
+    base: &[u8; REPORT_SIZE],
+    fb_params: &[(usize, u8)],
+) -> [u8; REPORT_SIZE] {
+    let mut buf = [0u8; REPORT_SIZE];
+    buf[0] = REPORT_ID;
+    buf[1] = TUNING_MARKER;
+    buf[2] = CMD_WRITE_PARAM;
+    buf[3..63].copy_from_slice(&base[2..62]);
+    for &(offset, val) in fb_params {
+        buf[4 + offset] = val;
+    }
+    buf
+}
+
 /// Builds a write report applying `params` to a snapshot of the current device
 /// state (`base`, the last received read response).
 ///

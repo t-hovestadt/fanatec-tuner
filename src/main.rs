@@ -12,8 +12,8 @@ mod tuning;
 use clap::{Parser, Subcommand};
 use hid::REPORT_SIZE;
 use tuning::{
-    build_full_write_report, build_request_report, build_select_slot_report, build_wake_report,
-    is_tuning_report, parse_tuning_report, ADDR_NDP,
+    build_fb_write_report, build_full_write_report, build_request_report, build_select_slot_report,
+    build_wake_report, is_tuning_report, parse_tuning_report, ADDR_NDP,
 };
 
 #[derive(Parser)]
@@ -433,7 +433,7 @@ pub(crate) fn apply_write(
     let write_buf = match base_opt {
         Some(base) => {
             println!("  [apply] pre-read OK — building write from device state");
-            build_full_write_report(&base, &prof.to_params())
+            build_fb_write_report(&base, &prof.to_fb_params())
         }
         None => {
             println!("  [apply] pre-read FAILED — building write from scratch");

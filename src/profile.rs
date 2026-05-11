@@ -102,6 +102,34 @@ impl PwsProfile {
         buf
     }
 
+    /// Returns all tuning values as `(struct_offset, wire_value)` pairs for use with
+    /// `build_fb_write_report`. The overlay is applied as `buf[4 + struct_offset] = val`.
+    /// Struct offsets match FanaBridge's TuningMenuProfile field order exactly.
+    pub fn to_fb_params(&self) -> Vec<(usize, u8)> {
+        vec![
+            (1, self.sen),
+            (2, self.ff),
+            (3, Self::wire_div10(self.sho)),
+            (4, self.bli),
+            (5, self.ffs),
+            // 6 = DEA — skip
+            (7, self.dri),
+            (8, Self::wire_div10(self.for_)),
+            (9, Self::wire_div10(self.spr)),
+            (10, Self::wire_div10(self.dpr)),
+            (11, self.ndp),
+            (12, self.nfr),
+            (13, Self::wire_div10(self.brf)), // BRF: buf[4+13]=buf[17], not buf[ADDR_BRF+2]=buf[18]
+            // 14 = BRG — skip
+            (15, self.fei),
+            // 16 = MPS — skip
+            (17, self.acp),
+            (18, self.int_),
+            (19, self.nin),
+            (20, self.ful),
+        ]
+    }
+
     /// Returns all tuning values as `(ADDR_*, wire_value)` pairs for use with
     /// `build_full_write_report`. The +2 write-offset is applied by that function.
     pub fn to_params(&self) -> Vec<(usize, u8)> {
