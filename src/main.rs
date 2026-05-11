@@ -382,8 +382,99 @@ pub(crate) fn apply_write(
     drain_stale_reports(col03);
     let _ = hid::write_report(col03, &request);
     let write_buf = match read_tuning_report(col03) {
-        Some(base) => build_full_write_report(&base, &prof.to_params()),
-        None => prof.to_write_report(),
+        Some(base) => {
+            // ── debug ────────────────────────────────────────────────────────
+            {
+                use tuning::{
+                    ADDR_ACP, ADDR_BLI, ADDR_BRF, ADDR_DPR, ADDR_DRI, ADDR_FEI, ADDR_FF, ADDR_FFS,
+                    ADDR_FOR, ADDR_FUL, ADDR_INT, ADDR_NDP, ADDR_NFR, ADDR_NIN, ADDR_SEN, ADDR_SHO,
+                    ADDR_SPR,
+                };
+                println!(
+                    "[dbg] ADDR_* read offsets:  SEN={} FF={} SHO={} BLI={} FFS={} DRI={} \
+                     FOR={} SPR={} DPR={} NDP={} NFR={} BRF={} FEI={} ACP={} INT={} NIN={} FUL={}",
+                    ADDR_SEN,
+                    ADDR_FF,
+                    ADDR_SHO,
+                    ADDR_BLI,
+                    ADDR_FFS,
+                    ADDR_DRI,
+                    ADDR_FOR,
+                    ADDR_SPR,
+                    ADDR_DPR,
+                    ADDR_NDP,
+                    ADDR_NFR,
+                    ADDR_BRF,
+                    ADDR_FEI,
+                    ADDR_ACP,
+                    ADDR_INT,
+                    ADDR_NIN,
+                    ADDR_FUL,
+                );
+                println!(
+                    "[dbg] ADDR_*+2 write pos:   SEN={} FF={} SHO={} BLI={} FFS={} DRI={} \
+                     FOR={} SPR={} DPR={} NDP={} NFR={} BRF={} FEI={} ACP={} INT={} NIN={} FUL={}",
+                    ADDR_SEN + 2,
+                    ADDR_FF + 2,
+                    ADDR_SHO + 2,
+                    ADDR_BLI + 2,
+                    ADDR_FFS + 2,
+                    ADDR_DRI + 2,
+                    ADDR_FOR + 2,
+                    ADDR_SPR + 2,
+                    ADDR_DPR + 2,
+                    ADDR_NDP + 2,
+                    ADDR_NFR + 2,
+                    ADDR_BRF + 2,
+                    ADDR_FEI + 2,
+                    ADDR_ACP + 2,
+                    ADDR_INT + 2,
+                    ADDR_NIN + 2,
+                    ADDR_FUL + 2,
+                );
+                println!(
+                    "[dbg] FanaBridge write map: \
+                     byte5=SEN byte6=FF byte7=SHO byte8=BLI byte9=FFS byte10=DEA \
+                     byte11=DRI byte12=FOR byte13=SPR byte14=DPR byte15=NDP byte16=NFR \
+                     byte17=BRF byte18=BRG byte19=FEI byte20=MPS byte21=APM \
+                     byte22=INT byte23=NIN byte24=FUL"
+                );
+                println!("[dbg] read  buf[0..27]: {}", hex_str(&base[..27]));
+            }
+            // Build write buffer inline to capture before/after overlay state.
+            let mut buf = [0u8; REPORT_SIZE];
+            buf[0] = 0xFF; // REPORT_ID
+            buf[1] = 0x03; // TUNING_MARKER
+            buf[2] = 0x00; // CMD_WRITE_PARAM
+            buf[5..REPORT_SIZE].copy_from_slice(&base[3..REPORT_SIZE - 2]);
+            buf[3] = 0x01; // devId
+            buf[4] = 0x01; // UserSetupIndex = slot 1
+            println!(
+                "[dbg] write buf before overlay[0..27]: {}",
+                hex_str(&buf[..27])
+            );
+            let params = prof.to_params();
+            for &(addr, val) in &params {
+                println!(
+                    "[dbg] overlay: addr={:2} write_pos={:2} val=0x{:02X}",
+                    addr,
+                    addr + 2,
+                    val
+                );
+            }
+            for &(addr, val) in &params {
+                buf[addr + 2] = val;
+            }
+            println!(
+                "[dbg] write buf after  overlay[0..27]: {}",
+                hex_str(&buf[..27])
+            );
+            buf
+        }
+        None => {
+            println!("[dbg] pre-read failed — using scratch write");
+            prof.to_write_report()
+        }
     };
     if hid::write_report(col03, &write_buf).is_err() {
         return None;
