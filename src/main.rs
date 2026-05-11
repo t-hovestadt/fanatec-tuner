@@ -397,6 +397,12 @@ pub(crate) fn apply_write(
                 matched,
                 params.len()
             );
+            if let Some(&(addr, val)) = params.iter().find(|&&(addr, val)| after[addr] != val) {
+                println!(
+                    "  [apply] first mismatch: addr=0x{:02X} expected=0x{:02X} got=0x{:02X}",
+                    addr, val, after[addr]
+                );
+            }
             // Return immediately if all target params are in place, or on the last attempt.
             if attempt == 1 || matched == params.len() {
                 return Some(after);
