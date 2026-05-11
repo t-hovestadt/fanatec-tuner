@@ -361,6 +361,144 @@ pub fn get_hid_caps(_device: &FanatecDevice) -> Option<HidCaps> {
     None
 }
 
+// ---------------------------------------------------------------------------
+// Traced I/O — identical to write_report / read_report but print every step
+// ---------------------------------------------------------------------------
+
+fn hex27(buf: &[u8; REPORT_SIZE]) -> String {
+    buf[..27]
+        .iter()
+        .map(|b| format!("{:02X}", b))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// write_report with full WriteFile trace to stdout.
+#[cfg(windows)]
+pub fn write_report_traced(
+    device: &FanatecDevice,
+    buf: &[u8; REPORT_SIZE],
+) -> Result<(), HidError> {
+    println!(
+        "  WriteFile: handle=0x{:016X}  send_len={}  buf[0..27]= {}",
+        device.handle as usize,
+        REPORT_SIZE,
+        hex27(buf)
+    );
+    println!("  (API: WriteFile overlapped — NOT HidD_SetOutputReport)");
+    unsafe {
+        let mut overlapped: OVERLAPPED = std::mem::zeroed();
+        let mut written = 0u32;
+        let ok = WriteFile(
+            device.handle,
+            buf.as_ptr(),
+            REPORT_SIZE as u32,
+            &mut written,
+            &mut overlapped,
+        );
+        if ok != 0 {
+            println!("  WriteFile() → TRUE  bytes_written={}", written);
+            return Ok(());
+        }
+        let err = GetLastError();
+        println!(
+            "  WriteFile() → FALSE  err={} (0x{:08X})  bytes_written={}",
+            err, err, written
+        );
+        const ERROR_IO_PENDING: u32 = 997;
+        if err != ERROR_IO_PENDING {
+            return Err(HidError::WriteFailed(err));
+        }
+        println!("  (IO_PENDING — awaiting overlapped completion)");
+        if GetOverlappedResult(device.handle, &overlapped, &mut written, 1) == 0 {
+            let err2 = GetLastError();
+            println!("  GetOverlappedResult → FAILED  err={}", err2);
+            return Err(HidError::WriteFailed(err2));
+        }
+        println!("  GetOverlappedResult → OK  bytes_written={}", written);
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+pub fn write_report_traced(
+    _device: &FanatecDevice,
+    _buf: &[u8; REPORT_SIZE],
+) -> Result<(), HidError> {
+    Err(HidError::WriteFailed(0))
+}
+
+/// read_report with full ReadFile trace to stdout.
+#[cfg(windows)]
+pub fn read_report_traced(
+    device: &FanatecDevice,
+    buf: &mut [u8; REPORT_SIZE],
+    timeout_ms: u32,
+) -> Result<(), HidError> {
+    println!(
+        "  ReadFile:  handle=0x{:016X}  timeout={}ms",
+        device.handle as usize, timeout_ms
+    );
+    unsafe {
+        let event = CreateEventW(std::ptr::null(), 1, 0, std::ptr::null());
+        if event == 0 {
+            return Err(HidError::ReadFailed(GetLastError()));
+        }
+        let _guard = EventGuard(event);
+        let mut overlapped: OVERLAPPED = std::mem::zeroed();
+        overlapped.hEvent = event;
+        let mut read = 0u32;
+        let ok = ReadFile(
+            device.handle,
+            buf.as_mut_ptr(),
+            REPORT_SIZE as u32,
+            &mut read,
+            &mut overlapped,
+        );
+        if ok == 0 {
+            let err = GetLastError();
+            const ERROR_IO_PENDING: u32 = 997;
+            if err != ERROR_IO_PENDING {
+                println!("  ReadFile() → FALSE  err={} (0x{:08X})", err, err);
+                return Err(HidError::ReadFailed(err));
+            }
+        }
+        const WAIT_TIMEOUT: u32 = 0x0000_0102;
+        const WAIT_OBJECT_0: u32 = 0x0000_0000;
+        let wait = WaitForSingleObject(event, timeout_ms);
+        if wait == WAIT_TIMEOUT {
+            CancelIo(device.handle);
+            println!("  ReadFile() → TIMEOUT");
+            return Err(HidError::Timeout);
+        }
+        if wait != WAIT_OBJECT_0 {
+            let err = GetLastError();
+            println!("  ReadFile() → wait failed  err={}", err);
+            return Err(HidError::ReadFailed(err));
+        }
+        if GetOverlappedResult(device.handle, &overlapped, &mut read, 0) == 0 {
+            let err = GetLastError();
+            println!("  ReadFile() → GetOverlappedResult FAILED  err={}", err);
+            return Err(HidError::ReadFailed(err));
+        }
+        println!(
+            "  ReadFile() → OK  bytes_read={}  buf[0..27]= {}",
+            read,
+            hex27(buf)
+        );
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+pub fn read_report_traced(
+    _device: &FanatecDevice,
+    _buf: &mut [u8; REPORT_SIZE],
+    _timeout_ms: u32,
+) -> Result<(), HidError> {
+    Err(HidError::ReadFailed(0))
+}
+
 /// WriteFile with an arbitrary-length byte slice (used by the diag command).
 #[cfg(windows)]
 pub fn write_raw(device: &FanatecDevice, buf: &[u8]) -> Result<(), HidError> {

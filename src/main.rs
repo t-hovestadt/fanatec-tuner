@@ -271,14 +271,20 @@ pub(crate) fn probe_tuning_collection(
 
         drain_stale_reports(dev);
 
+        println!(
+            "\n  [probe] handle=0x{:016X}  sending READ [FF 03 02]: {}",
+            dev.handle as usize,
+            hex_str(&request[..10])
+        );
+
         // Bail immediately if the collection refuses writes.
         if hid::write_report(dev, &request).is_err() {
-            println!("skip (write rejected)");
+            println!("  [probe] write rejected — skipping");
             continue;
         }
 
-        if let Some(buf) = read_tuning_report(dev) {
-            println!("OK");
+        if let Some(buf) = read_tuning_report_traced(dev) {
+            println!("  [probe] OK");
             let _ = TUNING_COLLECTION.set(dev.device_path.clone());
             return Some((idx, buf));
         }
@@ -287,8 +293,8 @@ pub(crate) fn probe_tuning_collection(
         print!("(retry) ");
         std::thread::sleep(std::time::Duration::from_millis(500));
         if hid::write_report(dev, &request).is_ok() {
-            if let Some(buf) = read_tuning_report(dev) {
-                println!("OK");
+            if let Some(buf) = read_tuning_report_traced(dev) {
+                println!("  [probe] OK (retry)");
                 let _ = TUNING_COLLECTION.set(dev.device_path.clone());
                 return Some((idx, buf));
             }
@@ -307,6 +313,38 @@ fn read_tuning_report(dev: &hid::FanatecDevice) -> Option<[u8; REPORT_SIZE]> {
             Ok(()) if is_tuning_report(&buf) => return Some(buf),
             Ok(()) => {}
             Err(_) => break,
+        }
+    }
+    None
+}
+
+/// Like read_tuning_report but prints each ReadFile attempt.
+fn read_tuning_report_traced(dev: &hid::FanatecDevice) -> Option<[u8; REPORT_SIZE]> {
+    let mut buf = [0u8; REPORT_SIZE];
+    for attempt in 0..10 {
+        match hid::read_report_traced(dev, &mut buf, 200) {
+            Ok(()) if is_tuning_report(&buf) => {
+                println!(
+                    "  [read] attempt {} → tuning report: {}",
+                    attempt,
+                    hex_str(&buf[..27])
+                );
+                return Some(buf);
+            }
+            Ok(()) => {
+                println!(
+                    "  [read] attempt {} → not tuning (buf[0..4]= {})",
+                    attempt,
+                    hex_str(&buf[..4])
+                );
+            }
+            Err(hid::HidError::Timeout) => {
+                println!("  [read] attempt {} → timeout", attempt);
+            }
+            Err(e) => {
+                println!("  [read] attempt {} → error: {}", attempt, e);
+                break;
+            }
         }
     }
     None
@@ -370,23 +408,60 @@ pub(crate) fn apply_write(
     }
 
     // Raw HID fallback — FanaBridge-exact sequence, no toggles.
+    println!(
+        "\n  [apply] raw HID path  handle=0x{:016X}",
+        col03.handle as usize
+    );
+    match hid::get_hid_caps(col03) {
+        Some(c) => println!(
+            "  [apply] HID caps: InputReportByteLength={}  OutputReportByteLength={}  FeatureReportByteLength={}",
+            c.input_report_len, c.output_report_len, c.feature_report_len
+        ),
+        None => println!("  [apply] HID caps: unavailable"),
+    }
+    println!(
+        "  [apply] send_len we use = {} bytes (buf[0]=0xFF as report ID)",
+        REPORT_SIZE
+    );
+
     let request = build_request_report();
     drain_stale_reports(col03);
+
+    println!("  [apply] pre-read: sending READ request [FF 03 02]");
     let _ = hid::write_report(col03, &request);
-    let write_buf = match read_tuning_report(col03) {
-        Some(base) => build_full_write_report(&base, &prof.to_params()),
-        None => prof.to_write_report(),
+    let base_opt = read_tuning_report_traced(col03);
+    let write_buf = match base_opt {
+        Some(base) => {
+            println!("  [apply] pre-read OK — building write from device state");
+            build_full_write_report(&base, &prof.to_params())
+        }
+        None => {
+            println!("  [apply] pre-read FAILED — building write from scratch");
+            prof.to_write_report()
+        }
     };
-    if hid::write_report(col03, &write_buf).is_err() {
+
+    println!("  [apply] sending WRITE:");
+    if hid::write_report_traced(col03, &write_buf).is_err() {
+        println!("  [apply] WRITE FAILED — aborting");
         return None;
     }
+    println!("  [apply] WRITE sent OK");
+
     if let Some(c01) = col01 {
         send_ack_burst(c01);
+        println!("  [apply] ACK burst sent on col01");
     }
+
     // Readback to verify.
+    println!("  [apply] sending readback READ request");
     drain_stale_reports(col03);
     let _ = hid::write_report(col03, &request);
-    read_tuning_report(col03)
+    let after = read_tuning_report_traced(col03);
+    if after.is_none() {
+        println!("  [apply] readback: no tuning report received");
+    }
+    after
 }
 
 /// Extracts the "col01" / "col02" label from a HID device path.
