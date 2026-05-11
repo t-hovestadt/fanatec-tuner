@@ -212,7 +212,7 @@ pub fn build_full_write_report(
     // Shift received state: read position i → write position i+2
     buf[5..REPORT_SIZE].copy_from_slice(&base[3..REPORT_SIZE - 2]);
     buf[3] = 0x01; // devId — must not be 0x81 (device silently ignores writes)
-    buf[4] = 0x00; // UserSetupIndex (slot 0 = current slot)
+    buf[4] = 0x01; // UserSetupIndex = slot 1
     for &(addr, val) in params {
         buf[addr + 2] = val;
     }
@@ -229,7 +229,7 @@ pub fn build_single_write_report(addr: usize, value: u8) -> [u8; REPORT_SIZE] {
     buf[1] = TUNING_MARKER;
     buf[2] = CMD_WRITE_PARAM;
     buf[3] = 0x01; // devId
-    buf[4] = 0x00; // UserSetupIndex
+    buf[4] = 0x01; // UserSetupIndex = slot 1
     buf[addr + 2] = value;
     buf
 }

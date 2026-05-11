@@ -81,7 +81,7 @@ impl PwsProfile {
         buf[1] = TUNING_MARKER;
         buf[2] = CMD_WRITE_PARAM;
         buf[3] = 0x01; // devId — must not be 0x81 (device silently ignores writes)
-        buf[4] = 0x00; // UserSetupIndex (slot 0 = current slot)
+        buf[4] = 0x01; // UserSetupIndex = slot 1
         buf[ADDR_SEN + 2] = self.sen;
         buf[ADDR_FF + 2] = self.ff;
         buf[ADDR_FFS + 2] = self.ffs;
