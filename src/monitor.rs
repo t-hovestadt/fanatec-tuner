@@ -5,7 +5,7 @@ use crate::carlist;
 use crate::config;
 use crate::games::{self, CarDetected};
 use crate::hid;
-use crate::profile::PwsProfile;
+use crate::profile::{self, PwsProfile};
 
 /// How long to wait for iRacing's process to reappear after it disappears
 /// during a session transition before declaring the game exited.
@@ -25,6 +25,10 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
     //   3. Custom path from config [xml] path (if set)
     let profiles_dir = config.profiles.path.as_deref().unwrap_or("profiles");
     let mut xml_candidates: Vec<PathBuf> = vec![PathBuf::from(profiles_dir).join("xml")];
+    // OneFanatec/xml/ is the live copy updated by the Fanatec App.
+    if let Some(ref base) = config.fanatec_app.resolve() {
+        xml_candidates.push(base.join("xml"));
+    }
     #[cfg(windows)]
     xml_candidates.push(PathBuf::from(
         r"C:\Program Files\Fanatec\FanatecService\Service\xml",
@@ -35,6 +39,19 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
 
     let (xml_cars_ir, xml_prof_ir) = carlist::load_for_game(&xml_candidates, "iRacing");
     let (xml_cars_ac, xml_prof_ac) = carlist::load_for_game(&xml_candidates, "AC");
+
+    // Extend user profiles with Fanatec App recommended profiles as a fallback.
+    let mut all_profiles: Vec<PwsProfile> = profiles.to_vec();
+    if let Some(ref base) = config.fanatec_app.resolve() {
+        let recommended = profile::scan_recommended_profiles(&base.join("settings"));
+        if !recommended.is_empty() {
+            println!(
+                "{} recommended profile(s) loaded from OneFanatec",
+                recommended.len()
+            );
+        }
+        all_profiles.extend(recommended);
+    }
 
     let devices = crate::open_devices();
     let col01 = crate::find_col01(&devices);
@@ -77,10 +94,18 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
                     } else {
                         (&xml_cars_ac, &xml_prof_ac)
                     };
-                    match find_matching_profile(profiles, detected, xml) {
+                    match find_matching_profile(&all_profiles, detected, xml) {
                         None => println!("no matching profile"),
                         Some(prof) => {
-                            println!("applying {}", prof.path.display());
+                            if prof.recommended {
+                                println!(
+                                    "no per-car profile — using Fanatec recommended FFB \
+                                     (FF={}, NDP={})",
+                                    prof.ff, prof.ndp
+                                );
+                            } else {
+                                println!("applying {}", prof.path.display());
+                            }
                             if !do_apply(&devices[dev_idx], col01, prof) {
                                 // Write failed — re-probe with existing handles to recover
                                 // advanced mode, then retry once.
@@ -168,7 +193,15 @@ fn find_matching_profile<'a>(
     }
 
     // 3. Filename-based fuzzy matching on detected car display name
-    fuzzy_match(profiles, &detected.game, &detected.car)
+    if let Some(p) = fuzzy_match(profiles, &detected.game, &detected.car) {
+        return Some(p);
+    }
+
+    // 4. Recommended fallback: game match only (car="" so fuzzy steps skip these)
+    let ng = normalize(&detected.game);
+    profiles
+        .iter()
+        .find(|p| p.recommended && normalize(&p.game) == ng)
 }
 
 fn fuzzy_match<'a>(profiles: &'a [PwsProfile], game: &str, car: &str) -> Option<&'a PwsProfile> {

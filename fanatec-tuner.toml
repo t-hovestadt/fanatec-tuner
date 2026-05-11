@@ -5,3 +5,7 @@ base = "CS DD+"
 
 [monitor]
 scan_interval = 3
+
+[fanatec_app]
+# Path to Fanatec App data folder (auto-detected from default location if omitted).
+# path = "C:\\Users\\Public\\Fanatec\\OneFanatec"

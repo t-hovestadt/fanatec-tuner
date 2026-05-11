@@ -107,6 +107,25 @@ pub fn decode_sen(raw: u8) -> Option<u32> {
     }
 }
 
+/// Encode display degrees to the SEN wire byte (large-range / DD+ encoding).
+/// This is the inverse of `decode_sen` for the large-range path.
+/// Input 0 → AUTO (wire 0x00). Values are clamped to the representable range 90–2640°.
+/// Values 1071–1079 are not representable; they map to 1070.
+pub fn encode_sen_degrees(degrees: u32) -> u8 {
+    if degrees == 0 {
+        return 0; // AUTO
+    }
+    let d = degrees.clamp(90, 2640);
+    if d <= 1070 {
+        (0x8Au32 + (d - 90) / 10) as u8
+    } else if d <= 1260 {
+        (0xEDu32 + (d - 1080) / 10) as u8
+    } else {
+        // 1270–2640: wrapped range through 0x00–0x89
+        ((d - 1080) / 10 - 19) as u8
+    }
+}
+
 /// Returns true if the 64-byte buffer is a tuning report.
 pub fn is_tuning_report(buf: &[u8; REPORT_SIZE]) -> bool {
     buf[0] == REPORT_ID && buf[1] == TUNING_MARKER

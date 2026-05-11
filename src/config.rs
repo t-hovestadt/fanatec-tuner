@@ -9,6 +9,33 @@ pub struct XmlConfig {
 }
 
 #[derive(Deserialize, Default)]
+pub struct FanatecAppConfig {
+    /// Path to the Fanatec App data folder (auto-detected if absent).
+    /// Default: C:\Users\Public\Fanatec\OneFanatec
+    pub path: Option<String>,
+}
+
+impl FanatecAppConfig {
+    /// Return the resolved OneFanatec root, or None if not found.
+    pub fn resolve(&self) -> Option<std::path::PathBuf> {
+        if let Some(ref p) = self.path {
+            let pb = std::path::PathBuf::from(p);
+            if pb.exists() {
+                return Some(pb);
+            }
+        }
+        #[cfg(windows)]
+        {
+            let default = std::path::PathBuf::from(r"C:\Users\Public\Fanatec\OneFanatec");
+            if default.exists() {
+                return Some(default);
+            }
+        }
+        None
+    }
+}
+
+#[derive(Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
     pub profiles: ProfilesConfig,
@@ -16,6 +43,8 @@ pub struct Config {
     pub monitor: MonitorConfig,
     #[serde(default)]
     pub xml: XmlConfig,
+    #[serde(default)]
+    pub fanatec_app: FanatecAppConfig,
 }
 
 #[derive(Deserialize, Default)]

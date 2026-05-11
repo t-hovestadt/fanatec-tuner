@@ -40,6 +40,9 @@ pub struct PwsProfile {
     #[allow(dead_code)]
     pub rev_led: Option<RevLedProfile>,
 
+    /// True for Fanatec App recommended profiles (game-wide fallback).
+    pub recommended: bool,
+
     pub sen: u8, // raw wire byte — sent to device as-is
     pub ff: u8,
     pub ffs: u8,
@@ -99,6 +102,40 @@ impl PwsProfile {
     }
 }
 
+// ── XML helpers ──────────────────────────────────────────────────────────────
+
+/// Extract a numeric attribute from a named XML tag.
+/// Finds the first `<tag_name ` occurrence and returns the parsed u8 value of `attr`.
+fn xml_attr_u8(text: &str, tag_name: &str, attr: &str) -> Option<u8> {
+    let needle = format!("<{} ", tag_name);
+    let tag_start = text.find(&needle)?;
+    let tag_end = text[tag_start..].find('>')?;
+    let tag_text = &text[tag_start..tag_start + tag_end + 1];
+    let attr_needle = format!("{}=\"", attr);
+    let start = tag_text.find(&attr_needle)? + attr_needle.len();
+    let end = tag_text[start..].find('"')?;
+    tag_text[start..start + end].parse().ok()
+}
+
+/// Extract the text content of a simple `<tag>value</tag>` element (first occurrence).
+fn xml_tag_value<'a>(text: &'a str, tag: &str) -> Option<&'a str> {
+    let open = format!("<{}>", tag);
+    let close = format!("</{}>", tag);
+    let start = text.find(&open)? + open.len();
+    let end = text[start..].find(&close)?;
+    Some(text[start..start + end].trim())
+}
+
+fn xml_tag_u32(text: &str, tag: &str) -> Option<u32> {
+    xml_tag_value(text, tag)?.parse().ok()
+}
+
+fn xml_tag_i32(text: &str, tag: &str) -> Option<i32> {
+    xml_tag_value(text, tag)?.parse().ok()
+}
+
+// ── RevLedProfile parser ──────────────────────────────────────────────────────
+
 /// Parse the `<RevLedProfileWheel>` section from .pws XML text.
 /// Returns None if the section is absent or its JSON cannot be parsed.
 fn parse_rev_led(text: &str) -> Option<RevLedProfile> {
@@ -149,18 +186,25 @@ fn parse_rev_led(text: &str) -> Option<RevLedProfile> {
     })
 }
 
-/// Extract a numeric attribute from a named XML tag without a full XML crate.
-/// Finds the first `<tag_name ` occurrence and returns the parsed u8 value of `attr`.
-fn xml_attr_u8(text: &str, tag_name: &str, attr: &str) -> Option<u8> {
-    let needle = format!("<{} ", tag_name);
-    let tag_start = text.find(&needle)?;
-    let tag_end = text[tag_start..].find('>')?;
-    let tag_text = &text[tag_start..tag_start + tag_end + 1];
-    let attr_needle = format!("{}=\"", attr);
-    let start = tag_text.find(&attr_needle)? + attr_needle.len();
-    let end = tag_text[start..].find('"')?;
-    tag_text[start..start + end].parse().ok()
+// ── Game ID mapping ───────────────────────────────────────────────────────────
+
+fn major_minor_to_game(major: u8, minor: u8) -> &'static str {
+    match (major, minor) {
+        (5, 0) => "iRacing",
+        (0, 0) => "AC",
+        (0, 1) => "ACC",
+        (0, 2) => "AC EVO",
+        (1, 1) => "AMS2",
+        (4, 10) => "F1 24",
+        (4, 11) => "F1 25",
+        (10, 0) => "RaceRoom",
+        (11, 1) => "rFactor 2",
+        (11, 2) => "LMU",
+        _ => "Unknown",
+    }
 }
+
+// ── Filename-based game/car extraction ───────────────────────────────────────
 
 /// Extracts `(game, car)` from a .pws filename stem.
 /// Pattern: `{Game} {CarName} - {FF} I {Torque}Nm`
@@ -179,14 +223,10 @@ pub fn car_name_from_stem(stem: &str) -> Option<(String, String)> {
     Some((game, car))
 }
 
-/// Parses a .pws file and returns its `TuningMenuProfile` JSON as a `PwsProfile`.
-///
-/// The file is XML with a `<TuningMenuProfile><JSON>…</JSON>` section.
-/// We locate that text span directly without an XML crate.
-pub fn parse_pws(path: &Path) -> Result<PwsProfile, String> {
-    let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {}", path.display(), e))?;
+// ── .pws parsers ─────────────────────────────────────────────────────────────
 
-    // Locate <TuningMenuProfile> … <JSON> … </JSON>
+/// Parse a Maurice-format .pws file (`<TuningMenuProfile><JSON>…</JSON>`).
+fn parse_maurice_pws(path: &Path, text: &str) -> Result<PwsProfile, String> {
     let tmp_start = text
         .find("<TuningMenuProfile>")
         .ok_or_else(|| format!("{}: missing <TuningMenuProfile>", path.display()))?;
@@ -222,9 +262,10 @@ pub fn parse_pws(path: &Path) -> Result<PwsProfile, String> {
         game,
         car,
         path: path.to_path_buf(),
-        base_type: xml_attr_u8(&text, "Device", "BaseType"),
-        wheel_type: xml_attr_u8(&text, "Device", "WheelType"),
-        rev_led: parse_rev_led(&text),
+        base_type: xml_attr_u8(text, "Device", "BaseType"),
+        wheel_type: xml_attr_u8(text, "Device", "WheelType"),
+        rev_led: parse_rev_led(text),
+        recommended: false,
         sen: get_u8("SEN"),
         ff: get_u8("FF"),
         ffs: get_u8("FFS"),
@@ -241,9 +282,80 @@ pub fn parse_pws(path: &Path) -> Result<PwsProfile, String> {
         brf: get_u8("BRF"),
         ful: get_u8("FUL"),
         dri: get_u8("DRI"),
-        acp: get_u8("APM"), // FanaLab JSON key for Analogue Paddles
+        acp: get_u8("APM"),
     })
 }
+
+/// Parse a Fanatec App recommended .pws file (`<TuningMenu>` with direct child tags).
+/// The `<SEN>` value is in display degrees; all other values are display units.
+fn parse_recommended_pws_text(path: &Path, text: &str) -> Result<PwsProfile, String> {
+    let get_u32 = |tag: &str| xml_tag_u32(text, tag).unwrap_or(0);
+    let get_u8 = |tag: &str| get_u32(tag).clamp(0, 255) as u8;
+
+    // SEN may be display degrees (e.g. 1080) or already a wire byte (≤ 255).
+    let sen_raw = get_u32("SEN");
+    let sen = if sen_raw > 255 {
+        crate::tuning::encode_sen_degrees(sen_raw)
+    } else {
+        sen_raw as u8
+    };
+
+    // DRI is signed: clamp to i8 range, then reinterpret as u8 for the wire.
+    let dri = (xml_tag_i32(text, "DRI").unwrap_or(0).clamp(-128, 127) as i8) as u8;
+
+    let major = xml_attr_u8(text, "Game", "MajorId").unwrap_or(255);
+    let minor = xml_attr_u8(text, "Game", "MinorId").unwrap_or(255);
+    let game = major_minor_to_game(major, minor).to_string();
+
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+
+    Ok(PwsProfile {
+        name: stem,
+        game,
+        car: String::new(), // game-wide; not matched by car fuzzy logic
+        path: path.to_path_buf(),
+        base_type: xml_attr_u8(text, "Device", "BaseType"),
+        wheel_type: xml_attr_u8(text, "Device", "WheelType"),
+        rev_led: None,
+        recommended: false, // caller (scan_recommended_profiles) sets true
+        sen,
+        ff: get_u8("FF"),
+        ffs: get_u8("FFS"),
+        ndp: get_u8("NDP"),
+        nfr: get_u8("NFR"),
+        nin: get_u8("NIN"),
+        int_: get_u8("INT"),
+        fei: get_u8("FEI"),
+        for_: get_u8("FOR"),
+        spr: get_u8("SPR"),
+        dpr: get_u8("DPR"),
+        bli: get_u8("ABS"), // <ABS> in recommended format = BLI
+        sho: get_u8("SHO"),
+        brf: get_u8("BRF"),
+        ful: get_u8("FUL"),
+        dri,
+        acp: get_u8("APM"),
+    })
+}
+
+/// Parse a .pws file, auto-detecting the format:
+/// - `<TuningMenuProfile><JSON>` — Maurice's format
+/// - `<TuningMenu>` with direct child tags — Fanatec App recommended format
+pub fn parse_pws(path: &Path) -> Result<PwsProfile, String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{}: {}", path.display(), e))?;
+    if text.contains("<TuningMenuProfile>") {
+        parse_maurice_pws(path, &text)
+    } else if text.contains("<TuningMenu>") {
+        parse_recommended_pws_text(path, &text)
+    } else {
+        Err(format!("{}: unrecognized .pws format", path.display()))
+    }
+}
+
+// ── Profile scanners ──────────────────────────────────────────────────────────
 
 /// Walks `base_dir` recursively and parses every `.pws` file found.
 /// Files that fail to parse are skipped with a warning to stderr.
@@ -276,4 +388,41 @@ fn walk_dir(dir: &Path, out: &mut Vec<PwsProfile>) {
             }
         }
     }
+}
+
+/// Walk `settings_dir/{MajorId}_{MinorId}/` and collect recommended .pws files.
+/// Each profile is marked `recommended = true` and has `car = ""` (game-wide).
+pub fn scan_recommended_profiles(settings_dir: &Path) -> Vec<PwsProfile> {
+    let mut out = Vec::new();
+    let entries = match std::fs::read_dir(settings_dir) {
+        Ok(e) => e,
+        Err(_) => return out,
+    };
+    for subdir_entry in entries.flatten() {
+        let subdir = subdir_entry.path();
+        if !subdir.is_dir() {
+            continue;
+        }
+        let pws_entries = match std::fs::read_dir(&subdir) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for pws_entry in pws_entries.flatten() {
+            let path = pws_entry.path();
+            if path
+                .extension()
+                .map(|e| e.eq_ignore_ascii_case("pws"))
+                .unwrap_or(false)
+            {
+                match parse_pws(&path) {
+                    Ok(mut p) => {
+                        p.recommended = true;
+                        out.push(p);
+                    }
+                    Err(e) => eprintln!("warning: skipping recommended {}: {}", path.display(), e),
+                }
+            }
+        }
+    }
+    out
 }
