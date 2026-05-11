@@ -8,8 +8,8 @@ mod tuning;
 use clap::{Parser, Subcommand};
 use hid::REPORT_SIZE;
 use tuning::{
-    build_full_write_report, build_request_report, build_wake_report, is_tuning_report,
-    parse_tuning_report,
+    build_full_write_report, build_request_report, build_select_slot_report, build_wake_report,
+    is_tuning_report, parse_tuning_report, ADDR_NDP,
 };
 
 #[derive(Parser)]
@@ -37,6 +37,8 @@ enum Command {
     Diag,
     /// Watch for game/car changes and auto-apply matching profiles
     Monitor,
+    /// Systematically test 8 toggle+write sequences to find the correct write protocol
+    WriteTest,
 }
 
 fn main() {
@@ -62,6 +64,7 @@ fn main() {
         Some(Command::Scan) => cmd_list(&cfg, true),
         Some(Command::Diag) => cmd_diag(),
         Some(Command::Monitor) => cmd_monitor(&cfg),
+        Some(Command::WriteTest) => cmd_write_test(),
     }
 }
 
@@ -365,6 +368,327 @@ pub(crate) fn collection_label(path: &str) -> String {
         return path[start..end.min(start + 5)].to_string();
     }
     "collection".to_string()
+}
+
+// ---------------------------------------------------------------------------
+// write-test — systematic toggle+write protocol diagnostics
+// ---------------------------------------------------------------------------
+
+fn cmd_write_test() {
+    use std::time::Duration;
+
+    let devices = open_devices();
+    let (idx, initial_buf) = match probe_tuning_collection(&devices) {
+        Some(r) => r,
+        None => {
+            eprintln!("error: no HID collection responded to the tuning request.");
+            std::process::exit(1);
+        }
+    };
+    let dev = &devices[idx];
+    let col = collection_label(&dev.device_path);
+    println!(
+        "Using {}  ({}, PID 0x{:04X})\n",
+        col, dev.product_name, dev.product_id
+    );
+
+    let original_ndp = initial_buf[ADDR_NDP];
+    let test_val: u8 = if original_ndp >= 10 {
+        original_ndp - 10
+    } else {
+        original_ndp + 10
+    };
+    println!(
+        "NDP original = {}  test value = {}\n",
+        original_ndp, test_val
+    );
+
+    // Each test returns Some(ndp_after) or None on readback failure.
+    let mut results: Vec<(&str, Option<u8>)> = Vec::new();
+
+    // Helper: build a write buffer for NDP = val, based on whatever buf holds now.
+    let make_write =
+        |base: &[u8; REPORT_SIZE], val: u8| build_full_write_report(base, &[(ADDR_NDP, val)]);
+
+    // Helper: send CMD_REQUEST + poll for tuning report, return buffer.
+    let do_request = |dev: &hid::FanatecDevice| -> Option<[u8; REPORT_SIZE]> {
+        let req = build_request_report();
+        if hid::write_report(dev, &req).is_err() {
+            return None;
+        }
+        read_tuning_report(dev)
+    };
+
+    // Helper: read NDP from a fresh request.
+    let read_ndp =
+        |dev: &hid::FanatecDevice| -> Option<u8> { do_request(dev).map(|b| b[ADDR_NDP]) };
+
+    // Helper: best-effort restore using toggle → write(original) → read.
+    let restore = |dev: &hid::FanatecDevice, base: &[u8; REPORT_SIZE]| {
+        let wb = make_write(base, original_ndp);
+        let wake = build_wake_report();
+        let _ = hid::write_report(dev, &wake);
+        std::thread::sleep(Duration::from_millis(500));
+        let _ = hid::write_report(dev, &wb);
+        std::thread::sleep(Duration::from_millis(200));
+        // Confirm restore.
+        if let Some(v) = read_ndp(dev) {
+            if v != original_ndp {
+                eprintln!("  [restore] NDP still {} after restore attempt", v);
+            }
+        }
+    };
+
+    // We track the current on-device buffer so each write uses a fresh base.
+    let mut current_buf = initial_buf;
+
+    // --- Test A: write → 200ms → toggle → 200ms → request → read ----------
+    {
+        println!("Test A: write → 200ms → toggle → 200ms → request → read");
+        let wb = make_write(&current_buf, test_val);
+        println!("  write[0..10]: {}", hex_str(&wb[..10]));
+        let ok_w = hid::write_report(dev, &wb).is_ok();
+        std::thread::sleep(Duration::from_millis(200));
+        let wake = build_wake_report();
+        let ok_t = hid::write_report(dev, &wake).is_ok();
+        std::thread::sleep(Duration::from_millis(200));
+        let v = if ok_w && ok_t { read_ndp(dev) } else { None };
+        println!("  → NDP after: {:?}", v);
+        results.push(("A: write→toggle→read", v));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+        restore(dev, &current_buf);
+        std::thread::sleep(Duration::from_millis(2000));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+    }
+
+    // --- Test B: toggle → 500ms → write → 200ms → toggle → 200ms → request → read
+    {
+        println!("Test B: toggle → 500ms → write → 200ms → toggle → 200ms → request → read");
+        let wb = make_write(&current_buf, test_val);
+        println!("  write[0..10]: {}", hex_str(&wb[..10]));
+        let wake = build_wake_report();
+        let _ = hid::write_report(dev, &wake);
+        std::thread::sleep(Duration::from_millis(500));
+        let ok_w = hid::write_report(dev, &wb).is_ok();
+        std::thread::sleep(Duration::from_millis(200));
+        let wake2 = build_wake_report();
+        let ok_t2 = hid::write_report(dev, &wake2).is_ok();
+        std::thread::sleep(Duration::from_millis(200));
+        let v = if ok_w && ok_t2 { read_ndp(dev) } else { None };
+        println!("  → NDP after: {:?}", v);
+        results.push(("B: toggle→write→toggle→read", v));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+        restore(dev, &current_buf);
+        std::thread::sleep(Duration::from_millis(2000));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+    }
+
+    // --- Test C: toggle → 500ms → write → 200ms → request → read (no post-write toggle)
+    {
+        println!("Test C: toggle → 500ms → write → 200ms → request → read");
+        let wb = make_write(&current_buf, test_val);
+        println!("  write[0..10]: {}", hex_str(&wb[..10]));
+        let wake = build_wake_report();
+        let _ = hid::write_report(dev, &wake);
+        std::thread::sleep(Duration::from_millis(500));
+        let ok_w = hid::write_report(dev, &wb).is_ok();
+        std::thread::sleep(Duration::from_millis(200));
+        let v = if ok_w { read_ndp(dev) } else { None };
+        println!("  → NDP after: {:?}", v);
+        results.push(("C: toggle→write→read", v));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+        restore(dev, &current_buf);
+        std::thread::sleep(Duration::from_millis(2000));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+    }
+
+    // --- Test D: write with buf[3]=0x01 (slot-byte override) → toggle → read
+    {
+        println!("Test D: write (buf[3]=0x01 slot override) → toggle → 200ms → read");
+        let mut wb = make_write(&current_buf, test_val);
+        wb[3] = 0x01; // force slot byte to 1
+        println!("  write[0..10]: {}", hex_str(&wb[..10]));
+        let ok_w = hid::write_report(dev, &wb).is_ok();
+        let wake = build_wake_report();
+        let ok_t = hid::write_report(dev, &wake).is_ok();
+        std::thread::sleep(Duration::from_millis(200));
+        let v = if ok_w && ok_t { read_ndp(dev) } else { None };
+        println!("  → NDP after: {:?}", v);
+        results.push(("D: write(slot=1)→toggle→read", v));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+        restore(dev, &current_buf);
+        std::thread::sleep(Duration::from_millis(2000));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+    }
+
+    // --- Test E: write with buf[3]=0x81 → toggle → read
+    {
+        println!("Test E: write (buf[3]=0x81) → toggle → 200ms → read");
+        let mut wb = make_write(&current_buf, test_val);
+        wb[3] = 0x81;
+        println!("  write[0..10]: {}", hex_str(&wb[..10]));
+        let ok_w = hid::write_report(dev, &wb).is_ok();
+        let wake = build_wake_report();
+        let ok_t = hid::write_report(dev, &wake).is_ok();
+        std::thread::sleep(Duration::from_millis(200));
+        let v = if ok_w && ok_t { read_ndp(dev) } else { None };
+        println!("  → NDP after: {:?}", v);
+        results.push(("E: write(buf[3]=0x81)→toggle→read", v));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+        restore(dev, &current_buf);
+        std::thread::sleep(Duration::from_millis(2000));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+    }
+
+    // --- Test F: TUNING_MENU init sequence then write → toggle → read
+    {
+        println!("Test F: [FF 08 01 FF]+[FF 08 02]+[FF 03 02] → write → toggle → 200ms → read");
+        let init_cmds: [[u8; REPORT_SIZE]; 3] = {
+            let mut a = [[0u8; REPORT_SIZE]; 3];
+            a[0][0] = 0xFF;
+            a[0][1] = 0x08;
+            a[0][2] = 0x01;
+            a[0][3] = 0xFF;
+            a[1][0] = 0xFF;
+            a[1][1] = 0x08;
+            a[1][2] = 0x02;
+            a[2][0] = 0xFF;
+            a[2][1] = 0x03;
+            a[2][2] = 0x02;
+            a
+        };
+        let mut init_ok = true;
+        for cmd in &init_cmds {
+            if hid::write_raw(dev, cmd).is_err() {
+                init_ok = false;
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        let v = if init_ok {
+            std::thread::sleep(Duration::from_millis(200));
+            let wb = make_write(&current_buf, test_val);
+            println!("  write[0..10]: {}", hex_str(&wb[..10]));
+            let ok_w = hid::write_report(dev, &wb).is_ok();
+            let wake = build_wake_report();
+            let ok_t = hid::write_report(dev, &wake).is_ok();
+            std::thread::sleep(Duration::from_millis(200));
+            if ok_w && ok_t {
+                read_ndp(dev)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        println!("  → NDP after: {:?}", v);
+        results.push(("F: init+write→toggle→read", v));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+        restore(dev, &current_buf);
+        std::thread::sleep(Duration::from_millis(2000));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+    }
+
+    // --- Test G: select_slot(1) → 200ms → write → toggle → 200ms → read
+    {
+        println!("Test G: select_slot(1) → 200ms → write → toggle → 200ms → read");
+        let slot_rpt = build_select_slot_report(1);
+        let _ = hid::write_report(dev, &slot_rpt);
+        std::thread::sleep(Duration::from_millis(200));
+        let wb = make_write(&current_buf, test_val);
+        println!("  write[0..10]: {}", hex_str(&wb[..10]));
+        let ok_w = hid::write_report(dev, &wb).is_ok();
+        let wake = build_wake_report();
+        let ok_t = hid::write_report(dev, &wake).is_ok();
+        std::thread::sleep(Duration::from_millis(200));
+        let v = if ok_w && ok_t { read_ndp(dev) } else { None };
+        println!("  → NDP after: {:?}", v);
+        results.push(("G: slot(1)→write→toggle→read", v));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+        restore(dev, &current_buf);
+        std::thread::sleep(Duration::from_millis(2000));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+    }
+
+    // --- Test H: toggle → toggle → 500ms → write → 200ms → toggle → 200ms → read
+    {
+        println!("Test H: toggle → toggle → 500ms → write → 200ms → toggle → 200ms → read");
+        let wake = build_wake_report();
+        let _ = hid::write_report(dev, &wake);
+        std::thread::sleep(Duration::from_millis(100));
+        let _ = hid::write_report(dev, &wake);
+        std::thread::sleep(Duration::from_millis(500));
+        let wb = make_write(&current_buf, test_val);
+        println!("  write[0..10]: {}", hex_str(&wb[..10]));
+        let ok_w = hid::write_report(dev, &wb).is_ok();
+        std::thread::sleep(Duration::from_millis(200));
+        let _ = hid::write_report(dev, &wake);
+        std::thread::sleep(Duration::from_millis(200));
+        let v = if ok_w { read_ndp(dev) } else { None };
+        println!("  → NDP after: {:?}", v);
+        results.push(("H: 2×toggle→write→toggle→read", v));
+        if let Some(b) = do_request(dev) {
+            current_buf = b;
+        }
+        restore(dev, &current_buf);
+        std::thread::sleep(Duration::from_millis(2000));
+    }
+
+    // --- Summary table
+    println!("\n=== Write-test summary ===");
+    println!(
+        "  (original NDP = {}  target = {})\n",
+        original_ndp, test_val
+    );
+    println!("  Test  Description                          NDP after  Changed?");
+    println!("  ----  -----------------------------------  ---------  --------");
+    for (label, v) in &results {
+        let ndp_str = match v {
+            Some(n) => format!("{}", n),
+            None => "N/A".to_string(),
+        };
+        let changed = match v {
+            Some(n) if *n == test_val => "YES ***",
+            Some(_) => "no",
+            None => "readback fail",
+        };
+        println!(
+            "  {:4}  {:<35}  {:>9}  {}",
+            &label[..1],
+            &label[3..],
+            ndp_str,
+            changed
+        );
+    }
+    println!();
 }
 
 // ---------------------------------------------------------------------------
