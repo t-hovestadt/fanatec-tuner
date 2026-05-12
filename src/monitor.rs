@@ -113,37 +113,35 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
             // Game is present — reset the gone timer regardless.
             gone_since = None;
 
-            if current != last_car {
-                if let Some(detected) = current.as_ref() {
-                    print!("[{}] {} / {} → ", now_hms(), detected.game, detected.car);
-                    let xml = if detected.game.starts_with("iRacing") {
-                        (&xml_cars_ir, &xml_prof_ir)
-                    } else {
-                        (&xml_cars_ac, &xml_prof_ac)
-                    };
-                    match find_matching_profile(&all_profiles, detected, xml) {
-                        None => println!("no matching profile"),
-                        Some(prof) => {
-                            if prof.recommended {
-                                println!(
-                                    "no per-car profile — using Fanatec recommended FFB \
-                                     (FF={}, NDP={})",
-                                    prof.ff, prof.ndp
-                                );
-                            } else {
-                                println!("applying {}", prof.path.display());
-                            }
-                            if !do_apply_paths(&col03_path, col01_path.as_deref(), prof) {
-                                eprintln!(
-                                    "  error: HID write failed \
-                                     (device may have been replugged)"
-                                );
-                            }
+            if let Some(detected) = current.as_ref() {
+                print!("[{}] {} / {} → ", now_hms(), detected.game, detected.car);
+                let xml = if detected.game.starts_with("iRacing") {
+                    (&xml_cars_ir, &xml_prof_ir)
+                } else {
+                    (&xml_cars_ac, &xml_prof_ac)
+                };
+                match find_matching_profile(&all_profiles, detected, xml) {
+                    None => println!("no matching profile"),
+                    Some(prof) => {
+                        if prof.recommended {
+                            println!(
+                                "no per-car profile — using Fanatec recommended FFB \
+                                 (FF={}, NDP={})",
+                                prof.ff, prof.ndp
+                            );
+                        } else {
+                            println!("applying {}", prof.path.display());
+                        }
+                        if !do_apply_paths(&col03_path, col01_path.as_deref(), prof) {
+                            eprintln!(
+                                "  error: HID write failed \
+                                 (device may have been replugged)"
+                            );
                         }
                     }
                 }
-                last_car = current;
             }
+            last_car = current;
         } else if last_car.is_some() {
             // Game gone, but we had a known car — start or continue grace period.
             let since = gone_since.get_or_insert_with(Instant::now);
