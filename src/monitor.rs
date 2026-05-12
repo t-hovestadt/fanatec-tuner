@@ -53,16 +53,30 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
         all_profiles.extend(recommended);
     }
 
-    // Retry loop — at startup the device/services may not be ready yet.
-    let (devices, mut dev_idx) = {
+    // Enumerate to find device paths — handles open briefly then drop.
+    // No probe is performed; a fresh handle is opened on each write instead.
+    let (col03_path, col01_path, dev_label, dev_name, dev_pid) = {
         let mut attempt = 0u32;
         loop {
-            if let Ok(devs) = hid::enumerate_fanatec() {
-                if !devs.is_empty() {
-                    if let Some((idx, _)) = crate::probe_tuning_collection(&devs) {
-                        break (devs, idx);
+            match hid::enumerate_fanatec() {
+                Ok(devs) if !devs.is_empty() => {
+                    if let Some(col03) = devs
+                        .iter()
+                        .find(|d| crate::collection_label(&d.device_path) == "col03")
+                    {
+                        let col03_path = col03.device_path.clone();
+                        let col01_path = devs
+                            .iter()
+                            .find(|d| crate::collection_label(&d.device_path) == "col01")
+                            .map(|d| d.device_path.clone());
+                        let label = crate::collection_label(&col03.device_path);
+                        let name = col03.product_name.clone();
+                        let pid = col03.product_id;
+                        // devs drops here — all handles closed
+                        break (col03_path, col01_path, label, name, pid);
                     }
                 }
+                _ => {}
             }
             attempt += 1;
             if attempt >= 12 {
@@ -79,13 +93,8 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
             std::thread::sleep(Duration::from_secs(5));
         }
     };
-    let col01 = crate::find_col01(&devices);
-    let col = crate::collection_label(&devices[dev_idx].device_path);
-    println!(
-        "Using {}  ({}, PID 0x{:04X})",
-        col, devices[dev_idx].product_name, devices[dev_idx].product_id
-    );
-    if col01.is_some() {
+    println!("Using {}  ({}, PID 0x{:04X})", dev_label, dev_name, dev_pid);
+    if col01_path.is_some() {
         println!("col01 (display/ACK) found");
     }
     println!("Monitoring — press Ctrl-C to stop\n");
@@ -124,19 +133,11 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
                             } else {
                                 println!("applying {}", prof.path.display());
                             }
-                            if !do_apply(&devices[dev_idx], col01, prof) {
-                                // Write failed — re-probe with existing handles to recover
-                                // advanced mode, then retry once.
-                                eprintln!("  re-probing after write failure…");
-                                match crate::probe_tuning_collection(&devices) {
-                                    Some((idx, _)) => {
-                                        dev_idx = idx;
-                                        do_apply(&devices[dev_idx], col01, prof);
-                                    }
-                                    None => {
-                                        eprintln!("  error: device not responding after re-probe")
-                                    }
-                                }
+                            if !do_apply_paths(&col03_path, col01_path.as_deref(), prof) {
+                                eprintln!(
+                                    "  error: HID write failed \
+                                     (device may have been replugged)"
+                                );
                             }
                         }
                     }
@@ -163,20 +164,25 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
     }
 }
 
-/// Applies the profile to the device. Returns false only on a hard HID write
-/// error (caller re-probes); readback failure is non-fatal.
-fn do_apply(
-    col03: &hid::FanatecDevice,
-    col01: Option<&hid::FanatecDevice>,
-    prof: &PwsProfile,
-) -> bool {
-    match crate::apply_write(col03, col01, prof) {
+/// Opens fresh HID handles, writes the profile, then closes them.
+/// Returns false only if col03 cannot be opened at all.
+fn do_apply_paths(col03_path: &str, col01_path: Option<&str>, prof: &PwsProfile) -> bool {
+    let col03 = match hid::open_device_by_path(col03_path) {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("  error: could not open col03: {}", e);
+            return false;
+        }
+    };
+    let col01 = col01_path.and_then(|p| hid::open_device_by_path(p).ok());
+    match crate::apply_write(&col03, col01.as_ref(), prof) {
         Some(_) => true,
         None => {
             eprintln!("  applied (unverified)");
             true
         }
     }
+    // col03 and col01 drop here → CloseHandle
 }
 
 fn find_matching_profile<'a>(
