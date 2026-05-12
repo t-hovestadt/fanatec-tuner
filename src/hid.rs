@@ -248,6 +248,45 @@ pub fn open_device_by_path(_path: &str) -> Result<FanatecDevice, HidError> {
     Err(HidError::OpenFailed(0))
 }
 
+// SAFETY: HANDLE is valid from any thread for overlapped ReadFile/WriteFile.
+// Each thread uses its own OVERLAPPED + event; no shared mutable state.
+#[cfg(windows)]
+unsafe impl Send for FanatecDevice {}
+
+/// Open a device read-only for passive traffic capture.
+/// Uses GENERIC_READ only so it coexists with an app that already holds a
+/// write handle (Fanatec App). FILE_SHARE_READ | FILE_SHARE_WRITE allows
+/// other openers to keep their handles while we observe.
+#[cfg(windows)]
+pub fn open_device_readonly(path: &str) -> Result<FanatecDevice, HidError> {
+    let path_wide: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
+    let handle = unsafe {
+        CreateFileW(
+            path_wide.as_ptr(),
+            GENERIC_READ,
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
+            std::ptr::null(),
+            OPEN_EXISTING,
+            FILE_FLAG_OVERLAPPED,
+            0,
+        )
+    };
+    if handle == INVALID_HANDLE_VALUE {
+        return Err(HidError::OpenFailed(unsafe { GetLastError() }));
+    }
+    Ok(FanatecDevice {
+        handle,
+        product_id: 0,
+        product_name: String::new(),
+        device_path: path.to_string(),
+    })
+}
+
+#[cfg(not(windows))]
+pub fn open_device_readonly(_path: &str) -> Result<FanatecDevice, HidError> {
+    Err(HidError::OpenFailed(0))
+}
+
 /// Sends a 64-byte output report. buf[0] must be the report ID (0xFF).
 #[cfg(windows)]
 pub fn write_report(device: &FanatecDevice, buf: &[u8; REPORT_SIZE]) -> Result<(), HidError> {

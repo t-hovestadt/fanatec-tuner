@@ -49,6 +49,12 @@ enum Command {
     WriteStress,
     /// Load the Fanatec SDK DLL, read tuning state, set a test param, verify, restore
     SdkTest,
+    /// Passively capture HID reports from col03/col01 (read-only, coexists with Fanatec App)
+    Sniff {
+        /// Print all 64 bytes per report instead of the first 32
+        #[arg(long)]
+        verbose: bool,
+    },
 }
 
 fn main() {
@@ -78,6 +84,7 @@ fn main() {
         Some(Command::LedTest) => cmd_led_test(),
         Some(Command::WriteStress) => cmd_write_stress(&cfg),
         Some(Command::SdkTest) => cmd_sdk_test(),
+        Some(Command::Sniff { verbose }) => cmd_sniff(verbose),
     }
 }
 
@@ -528,6 +535,113 @@ fn cmd_sdk_test() {
             }
         ),
         Err(e) => eprintln!("  final readback failed: {}", e),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// sniff — passive read-only HID traffic capture
+// ---------------------------------------------------------------------------
+
+fn cmd_sniff(verbose: bool) {
+    // Enumerate to get device paths, then immediately drop the write handles.
+    let devices = match hid::enumerate_fanatec() {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("error: {}", e);
+            std::process::exit(1);
+        }
+    };
+    if devices.is_empty() {
+        eprintln!("No Fanatec devices found (VID 0x0EB7). Connect the wheel base first.");
+        std::process::exit(1);
+    }
+
+    let col03_path = devices
+        .iter()
+        .find(|d| collection_label(&d.device_path) == "col03")
+        .map(|d| d.device_path.clone());
+    let col01_path = devices
+        .iter()
+        .find(|d| collection_label(&d.device_path) == "col01")
+        .map(|d| d.device_path.clone());
+    drop(devices); // release write handles before reopening read-only
+
+    let col03_path = match col03_path {
+        Some(p) => p,
+        None => {
+            eprintln!("error: col03 not found.");
+            std::process::exit(1);
+        }
+    };
+
+    let start = std::time::Instant::now();
+    let lock = std::sync::Arc::new(std::sync::Mutex::new(()));
+    let mut threads = Vec::new();
+
+    match hid::open_device_readonly(&col03_path) {
+        Ok(dev) => {
+            println!("Sniffing col03 (read-only)...");
+            let lk = lock.clone();
+            threads.push(std::thread::spawn(move || {
+                sniff_loop(dev, "col03", verbose, start, lk);
+            }));
+        }
+        Err(e) => {
+            eprintln!(
+                "error: cannot open col03 read-only: {}\n\
+                 Tip: start fanatec-tuner sniff BEFORE opening the Fanatec App.",
+                e
+            );
+            std::process::exit(1);
+        }
+    }
+
+    if let Some(path) = col01_path {
+        match hid::open_device_readonly(&path) {
+            Ok(dev) => {
+                println!("Sniffing col01 (read-only)...");
+                let lk = lock.clone();
+                threads.push(std::thread::spawn(move || {
+                    sniff_loop(dev, "col01", verbose, start, lk);
+                }));
+            }
+            Err(e) => eprintln!("warning: cannot open col01 read-only: {}", e),
+        }
+    }
+
+    println!("Press Ctrl+C to stop.\n");
+    for t in threads {
+        let _ = t.join();
+    }
+}
+
+fn sniff_loop(
+    dev: hid::FanatecDevice,
+    label: &'static str,
+    verbose: bool,
+    start: std::time::Instant,
+    lock: std::sync::Arc<std::sync::Mutex<()>>,
+) {
+    let mut buf = [0u8; REPORT_SIZE];
+    loop {
+        match hid::read_report(&dev, &mut buf, 100) {
+            Ok(()) => {
+                let elapsed = start.elapsed();
+                let mins = elapsed.as_secs() / 60;
+                let secs = elapsed.as_secs() % 60;
+                let ms = elapsed.subsec_millis();
+                let n = if verbose { REPORT_SIZE } else { 32 };
+                let hex: String = buf[..n]
+                    .iter()
+                    .map(|b| format!("{:02X}", b))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                let _guard = lock.lock().unwrap();
+                println!("[{:02}:{:02}.{:03}] IN  {}: {}", mins, secs, ms, label, hex);
+            }
+            Err(hid::HidError::Timeout) => {}
+            Err(_) => break,
+        }
     }
 }
 
