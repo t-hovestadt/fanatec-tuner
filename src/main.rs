@@ -333,11 +333,8 @@ fn drain_stale_reports(dev: &hid::FanatecDevice) {
 
 /// Writes a profile to the device via raw HID and reads back for verification.
 ///
-/// Tries up to four strategies when devId=0x81 (write-rejected mode):
-///   attempt 0 — normal write
-///   retry A    — toggle (buf[3]=devId) + 500ms + drain
-///   retry B    — fresh handle (close+reopen) + 200ms
-///   retry C    — fresh handle + toggle + 200ms + drain
+/// If attempt 0 sees devId=0x81 (write-rejected mode), retries once:
+/// open a fresh handle, send toggle, sleep 200ms, drain, re-read, write.
 pub(crate) fn apply_write(
     col03: &hid::FanatecDevice,
     col01: Option<&hid::FanatecDevice>,
@@ -357,10 +354,6 @@ pub(crate) fn apply_write(
     let base0 = read_tuning_report(col03)?;
     let dev_id0 = base0[2];
     let write_buf0 = build_fb_write_report(&base0, &params);
-    println!(
-        "  [apply] attempt 0: devId=0x{:02X} buf[3..8]= {:02X} {:02X} {:02X} {:02X} {:02X}",
-        write_buf0[3], write_buf0[3], write_buf0[4], write_buf0[5], write_buf0[6], write_buf0[7],
-    );
     if hid::write_report(col03, &write_buf0).is_err() {
         eprintln!("error: HID write failed");
         return None;
@@ -372,7 +365,12 @@ pub(crate) fn apply_write(
     let _ = hid::write_report(col03, &request);
     if let Some(after0) = read_tuning_report(col03) {
         let matched0 = params.iter().filter(|&&(a, v)| after0[a] == v).count();
-        println!("  [apply] attempt 0: match={}/{}", matched0, params.len());
+        println!(
+            "  [apply] attempt 0: devId=0x{:02X} match={}/{}",
+            dev_id0,
+            matched0,
+            params.len()
+        );
         if let Some(&(addr, val)) = params.iter().find(|&&(a, v)| after0[a] != v) {
             println!(
                 "  [apply] first mismatch: addr=0x{:02X} expected=0x{:02X} got=0x{:02X}",
@@ -384,101 +382,35 @@ pub(crate) fn apply_write(
         }
     }
 
-    // ── retry A: toggle (buf[3]=dev_id0) + 500ms + drain ─────────────────────
-    let mut wake_a = build_wake_report();
-    wake_a[3] = dev_id0;
-    let _ = hid::write_report(col03, &wake_a);
-    std::thread::sleep(std::time::Duration::from_millis(500));
-    drain_stale_reports(col03);
-    drain_stale_reports(col03);
-    let _ = hid::write_report(col03, &request);
-    if let Some(base_a) = read_tuning_report(col03) {
-        let dev_id_a = base_a[2];
-        let write_buf_a = build_fb_write_report(&base_a, &params);
-        if hid::write_report(col03, &write_buf_a).is_ok() {
-            if let Some(c01) = col01 {
-                send_ack_burst(c01);
-            }
-            drain_stale_reports(col03);
-            let _ = hid::write_report(col03, &request);
-            if let Some(after_a) = read_tuning_report(col03) {
-                let matched_a = params.iter().filter(|&&(a, v)| after_a[a] == v).count();
-                println!(
-                    "  [apply] retry A (toggle devId=0x{:02X}): re-read devId=0x{:02X} match={}/{}",
-                    dev_id0,
-                    dev_id_a,
-                    matched_a,
-                    params.len()
-                );
-                if matched_a == params.len() {
-                    return Some(after_a);
-                }
-            }
-        }
-    }
-
-    // ── retry B: fresh handle + 200ms ────────────────────────────────────────
-    std::thread::sleep(std::time::Duration::from_millis(200));
-    let fresh_b = match hid::open_device_by_path(&col03.device_path) {
+    // ── retry: fresh handle + toggle + 200ms + drain ─────────────────────────
+    let fresh = match hid::open_device_by_path(&col03.device_path) {
         Ok(d) => d,
         Err(_) => return None,
     };
-    drain_stale_reports(&fresh_b);
-    let _ = hid::write_report(&fresh_b, &request);
-    if let Some(base_b) = read_tuning_report(&fresh_b) {
-        let dev_id_b = base_b[2];
-        let write_buf_b = build_fb_write_report(&base_b, &params);
-        if hid::write_report(&fresh_b, &write_buf_b).is_ok() {
+    let mut wake = build_wake_report();
+    wake[3] = dev_id0;
+    let _ = hid::write_report(&fresh, &wake);
+    std::thread::sleep(std::time::Duration::from_millis(200));
+    drain_stale_reports(&fresh);
+    let _ = hid::write_report(&fresh, &request);
+    if let Some(base1) = read_tuning_report(&fresh) {
+        let dev_id1 = base1[2];
+        let write_buf1 = build_fb_write_report(&base1, &params);
+        if hid::write_report(&fresh, &write_buf1).is_ok() {
             if let Some(c01) = col01 {
                 send_ack_burst(c01);
             }
-            drain_stale_reports(&fresh_b);
-            let _ = hid::write_report(&fresh_b, &request);
-            if let Some(after_b) = read_tuning_report(&fresh_b) {
-                let matched_b = params.iter().filter(|&&(a, v)| after_b[a] == v).count();
+            drain_stale_reports(&fresh);
+            let _ = hid::write_report(&fresh, &request);
+            if let Some(after1) = read_tuning_report(&fresh) {
+                let matched1 = params.iter().filter(|&&(a, v)| after1[a] == v).count();
                 println!(
-                    "  [apply] retry B (handle reopen): re-read devId=0x{:02X} match={}/{}",
-                    dev_id_b,
-                    matched_b,
+                    "  [apply] retry (reopen+toggle): devId=0x{:02X} match={}/{}",
+                    dev_id1,
+                    matched1,
                     params.len()
                 );
-                if matched_b == params.len() {
-                    return Some(after_b);
-                }
-            }
-        }
-    }
-
-    // ── retry C: fresh handle + toggle + 200ms + drain ───────────────────────
-    std::thread::sleep(std::time::Duration::from_millis(200));
-    let fresh_c = match hid::open_device_by_path(&col03.device_path) {
-        Ok(d) => d,
-        Err(_) => return None,
-    };
-    let mut wake_c = build_wake_report();
-    wake_c[3] = dev_id0;
-    let _ = hid::write_report(&fresh_c, &wake_c);
-    std::thread::sleep(std::time::Duration::from_millis(200));
-    drain_stale_reports(&fresh_c);
-    let _ = hid::write_report(&fresh_c, &request);
-    if let Some(base_c) = read_tuning_report(&fresh_c) {
-        let dev_id_c = base_c[2];
-        let write_buf_c = build_fb_write_report(&base_c, &params);
-        if hid::write_report(&fresh_c, &write_buf_c).is_ok() {
-            if let Some(c01) = col01 {
-                send_ack_burst(c01);
-            }
-            drain_stale_reports(&fresh_c);
-            let _ = hid::write_report(&fresh_c, &request);
-            if let Some(after_c) = read_tuning_report(&fresh_c) {
-                let matched_c = params.iter().filter(|&&(a, v)| after_c[a] == v).count();
-                println!(
-                    "  [apply] retry C (reopen+toggle): re-read devId=0x{:02X} match={}/{}",
-                    dev_id_c,
-                    matched_c,
-                    params.len()
-                );
-                return Some(after_c);
+                return Some(after1);
             }
         }
     }
