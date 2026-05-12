@@ -216,6 +216,38 @@ pub fn enumerate_fanatec() -> Result<Vec<FanatecDevice>, HidError> {
     Ok(vec![])
 }
 
+/// Open a single HID device by its device path string.
+/// product_id and product_name are not populated — only the handle is needed.
+#[cfg(windows)]
+pub fn open_device_by_path(path: &str) -> Result<FanatecDevice, HidError> {
+    let path_wide: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
+    let handle = unsafe {
+        CreateFileW(
+            path_wide.as_ptr(),
+            GENERIC_READ | GENERIC_WRITE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE,
+            std::ptr::null(),
+            OPEN_EXISTING,
+            FILE_FLAG_OVERLAPPED,
+            0,
+        )
+    };
+    if handle == INVALID_HANDLE_VALUE {
+        return Err(HidError::OpenFailed(unsafe { GetLastError() }));
+    }
+    Ok(FanatecDevice {
+        handle,
+        product_id: 0,
+        product_name: String::new(),
+        device_path: path.to_string(),
+    })
+}
+
+#[cfg(not(windows))]
+pub fn open_device_by_path(_path: &str) -> Result<FanatecDevice, HidError> {
+    Err(HidError::OpenFailed(0))
+}
+
 /// Sends a 64-byte output report. buf[0] must be the report ID (0xFF).
 #[cfg(windows)]
 pub fn write_report(device: &FanatecDevice, buf: &[u8; REPORT_SIZE]) -> Result<(), HidError> {
