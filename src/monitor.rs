@@ -53,15 +53,33 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
         all_profiles.extend(recommended);
     }
 
-    let devices = crate::open_devices();
-    let col01 = crate::find_col01(&devices);
-    let mut dev_idx = match crate::probe_tuning_collection(&devices) {
-        Some((idx, _)) => idx,
-        None => {
-            eprintln!("error: no HID collection responded to the tuning request.");
-            std::process::exit(1);
+    // Retry loop — at startup the device/services may not be ready yet.
+    let (devices, mut dev_idx) = {
+        let mut attempt = 0u32;
+        loop {
+            if let Ok(devs) = hid::enumerate_fanatec() {
+                if !devs.is_empty() {
+                    if let Some((idx, _)) = crate::probe_tuning_collection(&devs) {
+                        break (devs, idx);
+                    }
+                }
+            }
+            attempt += 1;
+            if attempt >= 12 {
+                eprintln!(
+                    "[monitor] device not found after 60 s — \
+                     is the wheel base connected and powered on?"
+                );
+                std::process::exit(1);
+            }
+            eprintln!(
+                "[monitor] probe failed, retrying in 5 s... ({}/12)",
+                attempt
+            );
+            std::thread::sleep(Duration::from_secs(5));
         }
     };
+    let col01 = crate::find_col01(&devices);
     let col = crate::collection_label(&devices[dev_idx].device_path);
     println!(
         "Using {}  ({}, PID 0x{:04X})",
