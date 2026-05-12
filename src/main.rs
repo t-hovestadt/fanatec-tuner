@@ -239,7 +239,7 @@ static TUNING_COLLECTION: std::sync::OnceLock<String> = std::sync::OnceLock::new
 
 /// Tries each collection in turn. Returns device index + raw 64-byte tuning
 /// report from the first collection that responds to a READ request.
-/// Sends a toggle first to ensure the device is in a readable state.
+/// Probes collections without toggling — device should naturally stay in 0x01 mode.
 pub(crate) fn probe_tuning_collection(
     devices: &[hid::FanatecDevice],
 ) -> Option<(usize, [u8; REPORT_SIZE])> {
@@ -261,8 +261,6 @@ pub(crate) fn probe_tuning_collection(
         print!("  Probing {} ... ", col);
 
         drain_stale_reports(dev);
-        let _ = hid::write_report(dev, &build_wake_report());
-        std::thread::sleep(std::time::Duration::from_millis(200));
 
         if hid::write_report(dev, &request).is_err() {
             println!("skip (write rejected)");
@@ -334,7 +332,7 @@ fn drain_stale_reports(dev: &hid::FanatecDevice) {
 /// Writes a profile to the device via raw HID and reads back for verification.
 ///
 /// If attempt 0 sees devId=0x81 (write-rejected mode), retries once:
-/// open a fresh handle, send toggle, sleep 200ms, drain, re-read, write.
+/// open a fresh handle, sleep 200ms, drain, re-read, write (no toggle).
 pub(crate) fn apply_write(
     col03: &hid::FanatecDevice,
     col01: Option<&hid::FanatecDevice>,
@@ -382,14 +380,11 @@ pub(crate) fn apply_write(
         }
     }
 
-    // ── retry: fresh handle + toggle + 200ms + drain ─────────────────────────
+    // ── retry: fresh handle + 200ms + drain (no toggle) ─────────────────────
     let fresh = match hid::open_device_by_path(&col03.device_path) {
         Ok(d) => d,
         Err(_) => return None,
     };
-    let mut wake = build_wake_report();
-    wake[3] = dev_id0;
-    let _ = hid::write_report(&fresh, &wake);
     std::thread::sleep(std::time::Duration::from_millis(200));
     drain_stale_reports(&fresh);
     let _ = hid::write_report(&fresh, &request);
@@ -405,7 +400,7 @@ pub(crate) fn apply_write(
             if let Some(after1) = read_tuning_report(&fresh) {
                 let matched1 = params.iter().filter(|&&(a, v)| after1[a] == v).count();
                 println!(
-                    "  [apply] retry (reopen+toggle): devId=0x{:02X} match={}/{}",
+                    "  [apply] retry (reopen): devId=0x{:02X} match={}/{}",
                     dev_id1,
                     matched1,
                     params.len()
