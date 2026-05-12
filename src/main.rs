@@ -350,9 +350,12 @@ pub(crate) fn apply_write(
 
     for attempt in 0..2u8 {
         if attempt == 1 {
-            // Params didn't take — toggle advanced mode and retry.
+            // devId=0x81: write was rejected — toggle to exit advanced mode.
+            // Sleep 500ms so the device finishes processing all buffered traffic
+            // from the previous attempt before we drain and re-read.
             let _ = hid::write_report(col03, &build_wake_report());
-            std::thread::sleep(std::time::Duration::from_millis(200));
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            drain_stale_reports(col03);
         }
 
         drain_stale_reports(col03);
