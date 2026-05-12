@@ -27,6 +27,7 @@ pub const TUNING_MARKER: u8 = 0x03;
 pub const CMD_REQUEST_VALUES: u8 = 0x02;
 pub const CMD_SELECT_SLOT: u8 = 0x01;
 pub const CMD_WRITE_PARAM: u8 = 0x00;
+pub const CMD_SAVE: u8 = 0x03;
 #[allow(dead_code)]
 pub const CMD_TOGGLE_ADVANCED: u8 = 0x06;
 #[allow(dead_code)]
@@ -155,6 +156,17 @@ pub fn parse_tuning_report(buf: &[u8; REPORT_SIZE]) -> TuningProfile {
         nin: buf[ADDR_NIN],
         ful: buf[ADDR_FUL],
     }
+}
+
+/// Builds a 64-byte SAVE report (CMD 0x03).
+/// Instructs the firmware to persist the current configuration to flash.
+/// Send after writing LED configuration to make the colors survive a power cycle.
+pub fn build_save_report() -> [u8; REPORT_SIZE] {
+    let mut buf = [0u8; REPORT_SIZE];
+    buf[0] = REPORT_ID;
+    buf[1] = TUNING_MARKER;
+    buf[2] = CMD_SAVE;
+    buf
 }
 
 /// Builds a 64-byte advanced-mode toggle report (CMD 0x06).

@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 /// RPM-LED profile parsed from the `<RevLedProfileWheel>` section of a .pws file.
-/// Stored for future LED control — not yet used by the monitor loop.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Default)]
 pub struct RevLedProfile {
@@ -13,6 +12,18 @@ pub struct RevLedProfile {
     pub flash_threshold: u32,
     /// Flash period in milliseconds.
     pub flash_period_ms: u32,
+}
+
+/// One button's constant-color config from the `<ButtonLedProfile>` section.
+/// Colors use the 0–15 scale from FanaLab's JSON (4-bit per channel).
+/// Scale to 0–255 with `val * 255 / 15` before converting to RGB565.
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct ButtonLedEntry {
+    pub r: u8,          // 0–15
+    pub g: u8,          // 0–15
+    pub b: u8,          // 0–15
+    pub brightness: u8, // 0–15; scale to 0–7 with `val / 2` for the intensity report
 }
 
 /// Tuning values parsed from a .pws file.
@@ -35,10 +46,13 @@ pub struct PwsProfile {
     /// when LED control is implemented.
     #[allow(dead_code)]
     pub wheel_type: Option<u8>,
-    /// Rev LED strip profile from <RevLedProfileWheel>. Parsed for future use;
-    /// not yet applied by the monitor loop.
+    /// Rev LED strip profile from <RevLedProfileWheel>.
     #[allow(dead_code)]
     pub rev_led: Option<RevLedProfile>,
+    /// Per-button constant colors from <ButtonLedProfile> (up to 12 buttons).
+    /// None if the profile has no button LED section (wheels without button LEDs).
+    #[allow(dead_code)]
+    pub button_led: Option<Vec<ButtonLedEntry>>,
 
     /// True for Fanatec App recommended profiles (game-wide fallback).
     pub recommended: bool,
@@ -166,20 +180,61 @@ fn xml_tag_i32(text: &str, tag: &str) -> Option<i32> {
     xml_tag_value(text, tag)?.parse().ok()
 }
 
+// ── Section JSON helper ───────────────────────────────────────────────────────
+
+/// Return the text between the first `<JSON>…</JSON>` tags inside a named
+/// XML section.  E.g. `extract_section_json(text, "RevLedProfileWheel")`.
+fn extract_section_json<'a>(text: &'a str, section: &str) -> Option<&'a str> {
+    let open = format!("<{}>", section);
+    let section_pos = text.find(&open)?;
+    let json_rel = text[section_pos..].find("<JSON>")?;
+    let json_start = section_pos + json_rel + "<JSON>".len();
+    let json_len = text[json_start..].find("</JSON>")?;
+    Some(&text[json_start..json_start + json_len])
+}
+
 // ── RevLedProfile parser ──────────────────────────────────────────────────────
 
 /// Parse the `<RevLedProfileWheel>` section from .pws XML text.
-/// Returns None if the section is absent or its JSON cannot be parsed.
+///
+/// Actual .pws JSON structure (Maurice format v4.x):
+/// ```json
+/// { "RevLedGearsForward": [ { "ColorRaw": { "Colors": [ {"ColorIndex": 2}, … ] },
+///                              "RPMRawThreshold": [3500, …], … } ] }
+/// ```
+/// Colors are objects `{"ColorIndex": N}`, not plain integers.
+/// Falls back to a top-level `ColorRaw` if `RevLedGearsForward` is absent.
 fn parse_rev_led(text: &str) -> Option<RevLedProfile> {
-    let section_start = text.find("<RevLedProfileWheel>")?;
-    let json_offset = text[section_start..].find("<JSON>")?;
-    let json_start = section_start + json_offset + "<JSON>".len();
-    let json_end = text[json_start..].find("</JSON>")?;
-    let json_str = &text[json_start..json_start + json_end];
-
+    let json_str = extract_section_json(text, "RevLedProfileWheel")?;
     let v: serde_json::Value = serde_json::from_str(json_str).ok()?;
 
-    let rpm_thresholds = v
+    // Per-gear array: use gear-0 entry as the representative color set.
+    // Fall back to the top-level object for older / unknown formats.
+    let gear: &serde_json::Value = v
+        .get("RevLedGearsForward")
+        .and_then(|x| x.as_array())
+        .and_then(|arr| arr.first())
+        .unwrap_or(&v);
+
+    let colors: Vec<u8> = gear
+        .get("ColorRaw")
+        .and_then(|cr| cr.get("Colors"))
+        .and_then(|a| a.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|item| {
+                    // New format: {"ColorIndex": N}
+                    item.get("ColorIndex")
+                        .and_then(|x| x.as_u64())
+                        .map(|n| n as u8)
+                        // Old format: plain integer
+                        .or_else(|| item.as_u64().map(|n| n as u8))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let rpm_thresholds = gear
         .get("RPMRawThreshold")
         .and_then(|a| a.as_array())
         .map(|arr| {
@@ -189,23 +244,12 @@ fn parse_rev_led(text: &str) -> Option<RevLedProfile> {
         })
         .unwrap_or_default();
 
-    let colors = v
-        .get("ColorRaw")
-        .and_then(|cr| cr.get("Colors"))
-        .and_then(|a| a.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|x| x.as_u64().map(|n| n as u8))
-                .collect()
-        })
-        .unwrap_or_default();
-
-    let flash_threshold = v
+    let flash_threshold = gear
         .get("RPMFlashRawThreshold")
         .and_then(|x| x.as_u64())
         .unwrap_or(0) as u32;
 
-    let flash_period_ms = v
+    let flash_period_ms = gear
         .get("PeriodFlashRaw")
         .and_then(|x| x.as_u64())
         .unwrap_or(0) as u32;
@@ -216,6 +260,53 @@ fn parse_rev_led(text: &str) -> Option<RevLedProfile> {
         flash_threshold,
         flash_period_ms,
     })
+}
+
+// ── ButtonLedProfile parser ───────────────────────────────────────────────────
+
+/// Parse the `<ButtonLedProfile>` section from .pws XML text.
+///
+/// JSON structure (Maurice format v4.x):
+/// ```json
+/// { "LastUsed": "BMW",
+///   "ButtonLedsBMW": [ { "ConstantColor": { "Red":0,"Green":15,"Blue":0,"Brigthness":12 },
+///                         … }, … ] }
+/// ```
+/// Colors are 0–15 (4-bit); Brigthness is 0–15.
+/// Returns the `ConstantColor` per button for the wheel named by `LastUsed`.
+fn parse_button_led(text: &str) -> Option<Vec<ButtonLedEntry>> {
+    let json_str = extract_section_json(text, "ButtonLedProfile")?;
+    let v: serde_json::Value = serde_json::from_str(json_str).ok()?;
+
+    // Find the active wheel array: ButtonLeds{LastUsed}
+    let last_used = v.get("LastUsed").and_then(|x| x.as_str()).unwrap_or("");
+    let key = format!("ButtonLeds{}", last_used);
+    let arr = v
+        .get(&key)
+        .or_else(|| {
+            // Fallback: first ButtonLeds* array found
+            v.as_object()?.values().find(|val| val.is_array())
+        })
+        .and_then(|x| x.as_array())?;
+
+    let entries: Vec<ButtonLedEntry> = arr
+        .iter()
+        .filter_map(|entry| {
+            let cc = entry.get("ConstantColor")?;
+            Some(ButtonLedEntry {
+                r: cc.get("Red").and_then(|x| x.as_u64()).unwrap_or(0) as u8,
+                g: cc.get("Green").and_then(|x| x.as_u64()).unwrap_or(0) as u8,
+                b: cc.get("Blue").and_then(|x| x.as_u64()).unwrap_or(0) as u8,
+                brightness: cc.get("Brigthness").and_then(|x| x.as_u64()).unwrap_or(7) as u8,
+            })
+        })
+        .collect();
+
+    if entries.is_empty() {
+        None
+    } else {
+        Some(entries)
+    }
 }
 
 // ── Game ID mapping ───────────────────────────────────────────────────────────
@@ -297,6 +388,7 @@ fn parse_maurice_pws(path: &Path, text: &str) -> Result<PwsProfile, String> {
         base_type: xml_attr_u8(text, "Device", "BaseType"),
         wheel_type: xml_attr_u8(text, "Device", "WheelType"),
         rev_led: parse_rev_led(text),
+        button_led: parse_button_led(text),
         recommended: false,
         sen: get_u8("SEN"),
         ff: get_u8("FF"),
@@ -352,6 +444,7 @@ fn parse_recommended_pws_text(path: &Path, text: &str) -> Result<PwsProfile, Str
         base_type: xml_attr_u8(text, "Device", "BaseType"),
         wheel_type: xml_attr_u8(text, "Device", "WheelType"),
         rev_led: None,
+        button_led: None,
         recommended: false, // caller (scan_recommended_profiles) sets true
         sen,
         ff: get_u8("FF"),

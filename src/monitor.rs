@@ -5,7 +5,9 @@ use crate::carlist;
 use crate::config;
 use crate::games::{self, CarDetected};
 use crate::hid;
+use crate::led;
 use crate::profile::{self, PwsProfile};
+use crate::tuning;
 
 /// How long to wait for iRacing's process to reappear after it disappears
 /// during a session transition before declaring the game exited.
@@ -162,7 +164,7 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
     }
 }
 
-/// Opens fresh HID handles, writes the profile, then closes them.
+/// Opens fresh HID handles, writes tuning params then LED config, closes them.
 /// Returns false only if col03 cannot be opened at all.
 fn do_apply_paths(col03_path: &str, col01_path: Option<&str>, prof: &PwsProfile) -> bool {
     let col03 = match hid::open_device_by_path(col03_path) {
@@ -174,13 +176,76 @@ fn do_apply_paths(col03_path: &str, col01_path: Option<&str>, prof: &PwsProfile)
     };
     let col01 = col01_path.and_then(|p| hid::open_device_by_path(p).ok());
     match crate::apply_write(&col03, col01.as_ref(), prof) {
-        Some(_) => true,
-        None => {
-            eprintln!("  applied (unverified)");
-            true
+        Some(_) => {}
+        None => eprintln!("  applied (unverified)"),
+    }
+    send_led_config(&col03, prof);
+    true
+    // col03 and col01 drop here → CloseHandle
+}
+
+/// Send rev LED colors, clear flag LEDs, send button colors + intensities,
+/// then SAVE.  All writes are non-fatal — log and continue on failure.
+fn send_led_config(col03: &hid::FanatecDevice, prof: &PwsProfile) {
+    // ── Rev LEDs ────────────────────────────────────────────────────────────
+    if let Some(ref rev) = prof.rev_led {
+        if !rev.colors.is_empty() {
+            let rgb565: Vec<u16> = rev
+                .colors
+                .iter()
+                .map(|&ci| led::color_index_to_rgb565(ci))
+                .collect();
+            let report = led::build_rev_led_report(&rgb565);
+            if hid::write_report(col03, &report).is_ok() {
+                println!("  [led] rev: {} colors", rgb565.len());
+            } else {
+                eprintln!("  [led] rev write failed (non-fatal)");
+            }
         }
     }
-    // col03 and col01 drop here → CloseHandle
+
+    // ── Flag LEDs — clear to off; firmware overrides when flags trigger ─────
+    {
+        let report = led::build_flag_led_report(&[]);
+        let _ = hid::write_report(col03, &report);
+    }
+
+    // ── Button LEDs ──────────────────────────────────────────────────────────
+    if let Some(ref buttons) = prof.button_led {
+        if !buttons.is_empty() {
+            // 4-bit (0–15) channel values → RGB565
+            let colors: Vec<u16> = buttons
+                .iter()
+                .map(|b| {
+                    let r = (b.r as u32 * 255 / 15) as u8;
+                    let g = (b.g as u32 * 255 / 15) as u8;
+                    let b8 = (b.b as u32 * 255 / 15) as u8;
+                    led::rgb_to_rgb565(r, g, b8)
+                })
+                .collect();
+            // Stage colors (commit=false), then intensities (commit=true).
+            let color_report = led::build_button_color_report(&colors, false);
+            if hid::write_report(col03, &color_report).is_ok() {
+                // Scale Brigthness 0–15 → intensity 0–7.
+                let intensities: Vec<u8> =
+                    buttons.iter().map(|b| (b.brightness / 2).min(7)).collect();
+                let intensity_report = led::build_button_intensity_report(&intensities, true);
+                if hid::write_report(col03, &intensity_report).is_ok() {
+                    println!("  [led] buttons: {} sent", buttons.len());
+                } else {
+                    eprintln!("  [led] button intensity write failed (non-fatal)");
+                }
+            } else {
+                eprintln!("  [led] button color write failed (non-fatal)");
+            }
+        }
+    }
+
+    // ── SAVE — persist LED config to firmware flash ──────────────────────────
+    let save = tuning::build_save_report();
+    if hid::write_report(col03, &save).is_ok() {
+        println!("  [led] saved");
+    }
 }
 
 fn find_matching_profile<'a>(
