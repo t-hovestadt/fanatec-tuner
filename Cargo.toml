@@ -1,7 +1,12 @@
 [package]
 name = "fanatec-tuner"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
+description = "Automatic Fanatec tuning profile loader for sim racing"
+repository = "https://github.com/t-hovestadt/fanatec-tuner"
+license = "MIT"
+keywords = ["fanatec", "sim-racing", "iracing", "hid"]
+categories = ["games", "hardware-support"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
