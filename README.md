@@ -330,3 +330,13 @@ cargo clippy --target x86_64-pc-windows-gnu -- -D warnings
 - **Maurice Böschen** — FanaLab tuning profiles for 900+ cars
 - **[hid-fanatecff](https://github.com/gotzl/hid-fanatecff)** —
   Linux kernel driver; wire protocol reference
+
+---
+
+## Disclaimer
+
+This is an independent, open-source project. It is not affiliated with,
+endorsed by, or sponsored by Endor AG, Fanatec, or Corsair. "Fanatec" and
+related product names are trademarks of their respective owners. Use at your
+own risk — this tool communicates directly with your wheel base hardware via
+USB HID.
