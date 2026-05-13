@@ -13,8 +13,11 @@ Replaces manual profile switching in FanaLab or the Fanatec App.
 
 - **Monitor mode** — runs continuously, detects car changes via iRacing shared
   memory, applies the matching `.pws` profile on every session entry
-- **Full profile load** — tuning parameters (FF, SEN, NDP, FEI, etc.), rev LED
-  colors, button LED colors and brightness, flag LED defaults, SAVE to firmware
+- **Full profile load** — tuning parameters (FF, SEN, NDP, FEI, etc.) written
+  on every car change; rev LED color palette and button LED colors/brightness
+  sent as static one-shot writes to firmware flash; real-time RPM animation
+  requires either the Fanatec App or iRacing's shift indicator (see
+  [iRacing Shift LEDs](#iracing-shift-leds))
 - **XML car list matching** — uses Fanatec App's `ProfileCarsList` and
   `CarsList` XMLs for exact iRacing `carPath → .pws` mapping
 - **Fresh HID per write** — no stale handles; enumerate once at startup,
@@ -51,6 +54,27 @@ BMW M4 GT3, F1 Esports V2, ClubSport RS, and others.
 | iRacing | Shared memory + session YAML | Working |
 | Assetto Corsa EVO | Shared memory (`acevo_pmf_static`) | Implemented, untested |
 | Assetto Corsa / ACC | Shared memory (`acpmf_static`) | Implemented, untested |
+
+---
+
+## iRacing Shift LEDs
+
+fanatec-tuner sends the rev LED color palette from the `.pws` profile to the
+wheel firmware on each car change. The firmware uses this palette to illuminate
+the shift LEDs — but only when something is actively providing the RPM signal:
+
+| Scenario | iRacing setting | LED behavior |
+|----------|-----------------|--------------|
+| fanatec-tuner only, no Fanatec App | **Use Wheel Shift Indicator: ON** | iRacing drives LEDs natively via the Fanatec driver |
+| fanatec-tuner + Fanatec App | **Use Wheel Shift Indicator: OFF** | Fanatec App controls LEDs with per-car auto preset |
+| Tuning changes only, LEDs irrelevant | Either setting | — |
+
+The setting is in iRacing: **Options → Interface → External Displays → Use
+Wheel Shift Indicator**.
+
+Real-time RPM-driven LED control without the Fanatec App (reading RPM directly
+from iRacing shared memory and sending LED commands at ~30 Hz) is on the
+roadmap.
 
 ---
 
@@ -218,6 +242,29 @@ Every captured report appears in output — no silent drops.
 
 ---
 
+## How It Works
+
+fanatec-tuner communicates directly with the Fanatec wheel base over USB HID
+using the Windows `windows-sys` crate. No Fanatec App, FanaLab, or Fanatec
+SDK required.
+
+On each car change:
+
+1. iRacing shared memory is read to get the active car's `carPath` identifier
+   from the session info YAML (`DriverInfo.Drivers[idx].CarPath`)
+2. The `carPath` is looked up in Fanatec's XML car lists to find the matching
+   `.pws` profile filename
+3. A fresh HID write handle is opened to the wheel base's tuning collection
+   (col03 on the DD+)
+4. All tuning parameters are written in a single 64-byte output report
+5. Rev LED color palette, button LED colors/brightness, and flag LED defaults
+   are written as separate LED reports
+6. A SAVE command (`FF 03 03`) is sent to persist the LED configuration to
+   firmware flash
+7. The handle is closed immediately — no handle is held between writes
+
+---
+
 ## Configuration Reference
 
 ```toml
@@ -266,8 +313,12 @@ cargo clippy --target x86_64-pc-windows-gnu -- -D warnings
 
 ## Roadmap
 
-- Real-time RPM-driven LED control from iRacing shared memory
-- Per-car shift point extraction from iRacing session YAML
+- **Real-time RPM-driven rev LEDs** — read RPM from iRacing shared memory at
+  ~30 Hz, send LED update commands; replaces the Fanatec App's auto preset
+  entirely
+- **Per-car shift point extraction** from iRacing session YAML
+  (`DriverCarSLFirstRPM`, `SLLastRPM`, `SLShiftRPM`, `SLBlinkRPM`) for
+  accurate shift light timing per car
 - AC / ACC / AC EVO car detection active in monitor
 - UI for viewing and adjusting current tuning values
 - Integration into sim-teleport
