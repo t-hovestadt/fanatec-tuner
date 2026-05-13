@@ -431,12 +431,27 @@ cargo clippy --target x86_64-pc-windows-gnu -- -D warnings
 
 ## Roadmap
 
-- **Real-time RPM-driven rev LEDs** — read RPM from iRacing shared memory at
-  ~30 Hz, send LED update commands; replaces the Fanatec App's auto preset
-  entirely
-- **Per-car shift point extraction** from iRacing session YAML
-  (`DriverCarSLFirstRPM`, `SLLastRPM`, `SLShiftRPM`, `SLBlinkRPM`) for
-  accurate shift light timing per car
+### Planned: Real-time LED Control
+
+The next major feature is a real-time RPM-driven LED loop that fully replaces
+the Fanatec App's auto preset:
+
+- Read live RPM from iRacing shared memory at 60 Hz
+- Read per-car shift light RPM values from session YAML
+  (`DriverCarSLFirstRPM`, `SLLastRPM`, `SLShiftRPM`, `SLBlinkRPM`)
+- Compute LED state: which LEDs are lit based on current RPM vs per-car
+  thresholds
+- Apply color palette from `.pws` profile
+- Send `FF 01 00` LED commands at 30 Hz
+- Flash pattern at `SLBlinkRPM` (shift warning)
+- Gear display on 7-segment via col01
+- Flag LEDs from iRacing flag state telemetry
+
+This will make fanatec-tuner a complete replacement for the Fanatec App —
+tuning AND LED control from a single tool.
+
+### Other
+
 - AC / ACC / AC EVO car detection active in monitor
 - UI for viewing and adjusting current tuning values
 - Integration into sim-teleport
