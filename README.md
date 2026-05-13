@@ -57,24 +57,34 @@ BMW M4 GT3, F1 Esports V2, ClubSport RS, and others.
 
 ---
 
-## iRacing Shift LEDs
+## LED Control (Current Status)
 
-fanatec-tuner sends the rev LED color palette from the `.pws` profile to the
-wheel firmware on each car change. The firmware uses this palette to illuminate
-the shift LEDs — but only when something is actively providing the RPM signal:
+fanatec-tuner sends the LED color palette and button LED configuration from the
+`.pws` profile on each car change. This includes rev LED colors, button LED
+colors/brightness, and a SAVE to firmware.
 
-| Scenario | iRacing setting | LED behavior |
-|----------|-----------------|--------------|
-| fanatec-tuner only, no Fanatec App | **Use Wheel Shift Indicator: ON** | iRacing drives LEDs natively via the Fanatec driver |
-| fanatec-tuner + Fanatec App | **Use Wheel Shift Indicator: OFF** | Fanatec App controls LEDs with per-car auto preset |
-| Tuning changes only, LEDs irrelevant | Either setting | — |
+However, rev LED animation (lights responding to RPM in real time) requires a
+software loop continuously sending LED commands as RPM changes. The firmware
+does not animate LEDs on its own.
 
-The setting is in iRacing: **Options → Interface → External Displays → Use
-Wheel Shift Indicator**.
+**Current options for rev LED animation:**
 
-Real-time RPM-driven LED control without the Fanatec App (reading RPM directly
-from iRacing shared memory and sending LED commands at ~30 Hz) is on the
-roadmap.
+- **iRacing native mode** — set **Use Wheel Shift Indicator** to **ON** in
+  iRacing (Options → Interface → External Displays). iRacing sends basic shift
+  data through the Fanatec driver — LEDs show a generic green→yellow→red
+  pattern. No Fanatec App needed, but no per-car customization.
+
+- **Fanatec App** — set **Use Wheel Shift Indicator** to **OFF**. The Fanatec
+  App drives LEDs with per-car auto presets (custom colors, thresholds, flash
+  timing). Requires the Fanatec App running alongside fanatec-tuner.
+
+- **Planned** — real-time RPM-driven LED control built into fanatec-tuner:
+  read RPM from iRacing shared memory, apply per-car thresholds from session
+  YAML (`SLFirstRPM`, `SLLastRPM`, `SLShiftRPM`, `SLBlinkRPM`), send LED
+  commands at 30 Hz. This will fully replace the Fanatec App for LED control.
+
+Button LED colors and brightness are static (set once per car change) and work
+independently of the above.
 
 ---
 
