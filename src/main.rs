@@ -732,14 +732,17 @@ fn sniff_format_decoded(
     match (buf[0], buf[1]) {
         (0xFF, 0x03) => sniff_decode_ff03(&ts, marker, buf, prev),
         (0xFF, 0x01) => sniff_decode_ff01(&ts, marker, buf),
+        (0xFF, 0x08) => sniff_decode_ff08(&ts, marker, buf),
         (0xFF, 0x10) => sniff_decode_ff10(&ts, marker, buf, prev),
         _ => {
-            let hex: String = buf[..16]
+            // Never silently drop — show the actual type byte and full payload.
+            let type_byte = buf[1];
+            let hex: String = buf[..REPORT_SIZE]
                 .iter()
                 .map(|b| format!("{:02X}", b))
                 .collect::<Vec<_>>()
                 .join(" ");
-            format!("{}{} col03 ??: {}", ts, marker, hex)
+            format!("{}{} col03 FF{:02X}-UNK: {}", ts, marker, type_byte, hex)
         }
     }
 }
@@ -857,6 +860,16 @@ fn sniff_decode_ff01(ts: &str, marker: &str, buf: &[u8; REPORT_SIZE]) -> String 
     }
 }
 
+/// Decode an FF 08 hardware-status report — show full raw hex.
+fn sniff_decode_ff08(ts: &str, marker: &str, buf: &[u8; REPORT_SIZE]) -> String {
+    let hex: String = buf[..REPORT_SIZE]
+        .iter()
+        .map(|b| format!("{:02X}", b))
+        .collect::<Vec<_>>()
+        .join(" ");
+    format!("{}{} col03 HW-STATUS: {}", ts, marker, hex)
+}
+
 /// Attempt protobuf field extraction from an FF 10 input report.
 /// Payload starts at buf[2]; leading zero padding is skipped.
 fn sniff_decode_ff10(
@@ -865,15 +878,23 @@ fn sniff_decode_ff10(
     buf: &[u8; REPORT_SIZE],
     prev: &[u8; REPORT_SIZE],
 ) -> String {
-    let fields = sniff_parse_protobuf(&buf[2..]);
+    // Count non-zero payload bytes to report as the protobuf length.
+    let payload = &buf[2..];
+    let pb_len = payload.iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
+
+    let hex: String = buf[..REPORT_SIZE]
+        .iter()
+        .map(|b| format!("{:02X}", b))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let fields = sniff_parse_protobuf(payload);
 
     if fields.is_empty() {
-        let hex: String = buf[..16]
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ");
-        return format!("{}{} col03 FF10: {} [no pb fields]", ts, marker, hex);
+        return format!(
+            "{}{} col03 PROTO len={}: {} [no pb fields]",
+            ts, marker, pb_len, hex
+        );
     }
 
     // Build a map of previous field values for change annotation.
@@ -898,10 +919,12 @@ fn sniff_decode_ff10(
     // buf[2] == 0x16 is the sub-type that carries live tuning feedback (e.g. FF=27).
     let subtype_tag = if buf[2] == 0x16 { " [TUNING]" } else { "" };
     format!(
-        "{}{} col03 FF10{}: {}",
+        "{}{} col03 PROTO{} len={}: {}  [{}]",
         ts,
         marker,
         subtype_tag,
+        pb_len,
+        hex,
         parts.join("  ")
     )
 }
