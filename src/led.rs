@@ -104,3 +104,33 @@ pub fn color_index_to_rgb565(index: u8) -> u16 {
     let (r, g, b) = color_index_to_rgb(index);
     rgb_to_rgb565(r, g, b)
 }
+
+/// Compute rev LED colors for the current RPM using per-LED thresholds.
+///
+/// Algorithm: LED `i` lights when `rpm >= rpm_thresholds[i]`.
+/// When `rpm >= flash_threshold`, all lit LEDs follow the `blink_on` phase
+/// supplied by the caller's timer (true = lit, false = dark).
+///
+/// `palette` must be pre-converted RGB565 values (one per LED).
+/// Returns 9 RGB565 values; `0x0000` = off.
+pub fn compute_rev_leds(
+    rpm: f32,
+    rpm_thresholds: &[u32],
+    palette: &[u16],
+    flash_threshold: u32,
+    blink_on: bool,
+) -> [u16; 9] {
+    let blinking = flash_threshold > 0 && rpm as u32 >= flash_threshold;
+    let mut out = [0u16; 9];
+    for (i, slot) in out.iter_mut().enumerate() {
+        let thr = rpm_thresholds.get(i).copied().unwrap_or(u32::MAX);
+        if rpm as u32 >= thr {
+            *slot = if blinking && !blink_on {
+                0
+            } else {
+                palette.get(i).copied().unwrap_or(0)
+            };
+        }
+    }
+    out
+}

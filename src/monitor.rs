@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::mpsc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use crate::carlist;
@@ -8,6 +9,14 @@ use crate::hid;
 use crate::led;
 use crate::profile::{self, PwsProfile};
 use crate::tuning;
+
+/// Commands sent from the monitor thread to the LED thread.
+enum LedCmd {
+    /// A new car was detected; apply its profile and start animating.
+    CarChanged(Box<PwsProfile>),
+    /// The game exited; clear LEDs and stop animating.
+    GameExited,
+}
 
 /// How long to wait for iRacing's process to reappear after it disappears
 /// during a session transition before declaring the game exited.
@@ -101,6 +110,14 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
     }
     println!("Monitoring — press Ctrl-C to stop\n");
 
+    // Spawn the LED thread.  It owns the col03/col01 handles for their lifetime.
+    let (led_tx, led_rx) = mpsc::channel::<LedCmd>();
+    {
+        let col03_for_led = col03_path.clone();
+        let col01_for_led = col01_path.clone();
+        std::thread::spawn(move || led_thread(col03_for_led, col01_for_led, led_rx));
+    }
+
     let interval = Duration::from_secs(config.monitor.scan_interval_secs());
     let grace = Duration::from_secs(GAME_GONE_GRACE_SECS);
 
@@ -134,12 +151,7 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
                         } else {
                             println!("applying {}", prof.path.display());
                         }
-                        if !do_apply_paths(&col03_path, col01_path.as_deref(), prof) {
-                            eprintln!(
-                                "  error: HID write failed \
-                                 (device may have been replugged)"
-                            );
-                        }
+                        led_tx.send(LedCmd::CarChanged(Box::new(prof.clone()))).ok();
                     }
                 }
             }
@@ -149,6 +161,7 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
             let since = gone_since.get_or_insert_with(Instant::now);
             if since.elapsed() >= grace {
                 println!("[{}] Game exited — wheel unchanged", now_hms());
+                led_tx.send(LedCmd::GameExited).ok();
                 last_car = None;
                 gone_since = None;
             }
@@ -164,24 +177,110 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
     }
 }
 
-/// Opens fresh HID handles, writes tuning params then LED config, closes them.
-/// Returns false only if col03 cannot be opened at all.
-fn do_apply_paths(col03_path: &str, col01_path: Option<&str>, prof: &PwsProfile) -> bool {
-    let col03 = match hid::open_device_by_path(col03_path) {
-        Ok(d) => d,
-        Err(e) => {
-            eprintln!("  error: could not open col03: {}", e);
-            return false;
+/// Owns the HID handles for the process lifetime and drives rev LED animation
+/// at ~30 Hz.  Receives `LedCmd` messages from the monitor thread via channel.
+fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver<LedCmd>) {
+    let frame = Duration::from_millis(33); // ≈30 Hz
+
+    // Persistent handles — reopen col03 on write failure.
+    let mut col03 = hid::open_device_by_path(&col03_path).ok();
+    let col01 = col01_path
+        .as_deref()
+        .and_then(|p| hid::open_device_by_path(p).ok());
+
+    // Animation state (populated on CarChanged).
+    let mut palette = [0u16; 9];
+    let mut rpm_thresholds: Vec<u32> = Vec::new();
+    let mut flash_threshold: u32 = 0;
+    let mut flash_period_ms: u32 = 500;
+    let mut active = false;
+
+    // Blink state.
+    let mut blink_on = true;
+    let mut last_flip = Instant::now();
+
+    // Dirty tracking — only write when LED state changes.
+    let mut last_leds = [0u16; 9];
+
+    loop {
+        let tick_start = Instant::now();
+
+        // ── 1. Drain command channel (non-blocking) ───────────────────────────
+        loop {
+            match rx.try_recv() {
+                Ok(LedCmd::CarChanged(prof)) => {
+                    // Apply tuning + static LED config.
+                    if let Some(ref d) = col03 {
+                        match crate::apply_write(d, col01.as_ref(), &prof) {
+                            Some(_) => {}
+                            None => eprintln!("  applied (unverified)"),
+                        }
+                        send_led_config(d, &prof);
+                    }
+                    // Extract animation palette from profile.
+                    if let Some(ref rev) = prof.rev_led {
+                        for (i, &ci) in rev.colors.iter().take(9).enumerate() {
+                            palette[i] = led::color_index_to_rgb565(ci);
+                        }
+                        rpm_thresholds = rev.rpm_thresholds.clone();
+                        flash_threshold = rev.flash_threshold;
+                        flash_period_ms = rev.flash_period_ms.max(50);
+                        active = true;
+                    } else {
+                        active = false;
+                    }
+                    last_leds = [0u16; 9]; // force first-frame write
+                }
+                Ok(LedCmd::GameExited) => {
+                    active = false;
+                    if let Some(ref d) = col03 {
+                        let off = led::build_rev_led_report(&[0u16; 9]);
+                        let _ = hid::write_report(d, &off);
+                    }
+                    last_leds = [0u16; 9];
+                }
+                Err(mpsc::TryRecvError::Empty) => break,
+                Err(mpsc::TryRecvError::Disconnected) => return,
+            }
         }
-    };
-    let col01 = col01_path.and_then(|p| hid::open_device_by_path(p).ok());
-    match crate::apply_write(&col03, col01.as_ref(), prof) {
-        Some(_) => {}
-        None => eprintln!("  applied (unverified)"),
+
+        // ── 2. Animate rev LEDs ───────────────────────────────────────────────
+        if active {
+            // Advance blink phase.
+            let half = Duration::from_millis(flash_period_ms as u64 / 2);
+            if last_flip.elapsed() >= half {
+                blink_on = !blink_on;
+                last_flip = Instant::now();
+            }
+
+            if let Some(t) = games::iracing::live_telemetry() {
+                let new_leds = led::compute_rev_leds(
+                    t.rpm,
+                    &rpm_thresholds,
+                    &palette,
+                    flash_threshold,
+                    blink_on,
+                );
+                if new_leds != last_leds {
+                    let report = led::build_rev_led_report(&new_leds);
+                    if let Some(ref d) = col03 {
+                        if hid::write_report(d, &report).is_err() {
+                            eprintln!("[led] write failed — reopening handle");
+                            col03 = hid::open_device_by_path(&col03_path).ok();
+                        } else {
+                            last_leds = new_leds;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── 3. Sleep remainder of frame ───────────────────────────────────────
+        let elapsed = tick_start.elapsed();
+        if elapsed < frame {
+            std::thread::sleep(frame - elapsed);
+        }
     }
-    send_led_config(&col03, prof);
-    true
-    // col03 and col01 drop here → CloseHandle
 }
 
 /// Send rev LED colors, clear flag LEDs, send button colors + intensities,
