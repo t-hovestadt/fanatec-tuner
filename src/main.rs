@@ -54,6 +54,9 @@ enum Command {
         /// Print all 64 bytes per report instead of the first 32
         #[arg(long)]
         verbose: bool,
+        /// Decode reports into human-readable fields (tuning, LED, protobuf, col01 state)
+        #[arg(long)]
+        decode: bool,
     },
 }
 
@@ -84,7 +87,7 @@ fn main() {
         Some(Command::LedTest) => cmd_led_test(),
         Some(Command::WriteStress) => cmd_write_stress(&cfg),
         Some(Command::SdkTest) => cmd_sdk_test(),
-        Some(Command::Sniff { verbose }) => cmd_sniff(verbose),
+        Some(Command::Sniff { verbose, decode }) => cmd_sniff(verbose, decode),
     }
 }
 
@@ -542,7 +545,7 @@ fn cmd_sdk_test() {
 // sniff — passive read-only HID traffic capture
 // ---------------------------------------------------------------------------
 
-fn cmd_sniff(verbose: bool) {
+fn cmd_sniff(verbose: bool, decode: bool) {
     // Enumerate to get device paths, then immediately drop the write handles.
     let devices = match hid::enumerate_fanatec() {
         Ok(d) => d,
@@ -580,10 +583,13 @@ fn cmd_sniff(verbose: bool) {
 
     match hid::open_device_readonly(&col03_path) {
         Ok(dev) => {
-            println!("Sniffing col03 (read-only)...");
+            println!(
+                "Sniffing col03 (read-only){}...",
+                if decode { " [decode]" } else { "" }
+            );
             let lk = lock.clone();
             threads.push(std::thread::spawn(move || {
-                sniff_loop(dev, "col03", verbose, start, lk);
+                sniff_loop(dev, "col03", verbose, decode, start, lk);
             }));
         }
         Err(e) => {
@@ -599,10 +605,13 @@ fn cmd_sniff(verbose: bool) {
     if let Some(path) = col01_path {
         match hid::open_device_readonly(&path) {
             Ok(dev) => {
-                println!("Sniffing col01 (read-only)...");
+                println!(
+                    "Sniffing col01 (read-only){}...",
+                    if decode { " [decode]" } else { "" }
+                );
                 let lk = lock.clone();
                 threads.push(std::thread::spawn(move || {
-                    sniff_loop(dev, "col01", verbose, start, lk);
+                    sniff_loop(dev, "col01", verbose, decode, start, lk);
                 }));
             }
             Err(e) => eprintln!("warning: cannot open col01 read-only: {}", e),
@@ -619,30 +628,404 @@ fn sniff_loop(
     dev: hid::FanatecDevice,
     label: &'static str,
     verbose: bool,
+    decode: bool,
     start: std::time::Instant,
     lock: std::sync::Arc<std::sync::Mutex<()>>,
 ) {
+    use std::collections::HashMap;
+
     let mut buf = [0u8; REPORT_SIZE];
+    let mut prev_buf = [0u8; REPORT_SIZE];
+    // Count reports by type byte (buf[1]) for rate statistics.
+    let mut counts: HashMap<u8, u32> = HashMap::new();
+    let mut last_stats = std::time::Instant::now();
+    const STATS_SECS: u64 = 10;
+
     loop {
         match hid::read_report(&dev, &mut buf, 100) {
             Ok(()) => {
                 let elapsed = start.elapsed();
-                let mins = elapsed.as_secs() / 60;
-                let secs = elapsed.as_secs() % 60;
-                let ms = elapsed.subsec_millis();
-                let n = if verbose { REPORT_SIZE } else { 32 };
-                let hex: String = buf[..n]
-                    .iter()
-                    .map(|b| format!("{:02X}", b))
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                let _guard = lock.lock().unwrap();
-                println!("[{:02}:{:02}.{:03}] IN  {}: {}", mins, secs, ms, label, hex);
+                let changed = buf != prev_buf;
+                *counts.entry(buf[1]).or_insert(0) += 1;
+
+                let line = if decode {
+                    sniff_format_decoded(label, &buf, &prev_buf, elapsed)
+                } else {
+                    let mins = elapsed.as_secs() / 60;
+                    let secs = elapsed.as_secs() % 60;
+                    let ms = elapsed.subsec_millis();
+                    let n = if verbose { REPORT_SIZE } else { 32 };
+                    let hex: String = buf[..n]
+                        .iter()
+                        .map(|b| format!("{:02X}", b))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    let marker = if changed { "*" } else { " " };
+                    format!(
+                        "[{:02}:{:02}.{:03}]{} IN  {}: {}",
+                        mins, secs, ms, marker, label, hex
+                    )
+                };
+
+                {
+                    let _guard = lock.lock().unwrap();
+                    println!("{}", line);
+                }
+
+                prev_buf = buf;
+
+                // Rate stats every STATS_SECS seconds.
+                if last_stats.elapsed().as_secs() >= STATS_SECS {
+                    sniff_print_stats(&lock, label, &counts, last_stats.elapsed().as_secs_f64());
+                    counts.clear();
+                    last_stats = std::time::Instant::now();
+                }
             }
-            Err(hid::HidError::Timeout) => {}
+            Err(hid::HidError::Timeout) => {
+                // Still check the stats timer on quiet periods.
+                if last_stats.elapsed().as_secs() >= STATS_SECS && !counts.is_empty() {
+                    sniff_print_stats(&lock, label, &counts, last_stats.elapsed().as_secs_f64());
+                    counts.clear();
+                    last_stats = std::time::Instant::now();
+                }
+            }
             Err(_) => break,
         }
     }
+}
+
+fn sniff_print_stats(
+    lock: &std::sync::Arc<std::sync::Mutex<()>>,
+    label: &str,
+    counts: &std::collections::HashMap<u8, u32>,
+    elapsed_secs: f64,
+) {
+    let mut parts: Vec<String> = counts
+        .iter()
+        .map(|(&k, &v)| format!("FF{:02X}={:.1}/s", k, v as f64 / elapsed_secs))
+        .collect();
+    parts.sort();
+    let _guard = lock.lock().unwrap();
+    println!("[rate] {}: {}", label, parts.join("  "));
+}
+
+// ---------------------------------------------------------------------------
+// sniff decode helpers
+// ---------------------------------------------------------------------------
+
+fn sniff_format_decoded(
+    label: &str,
+    buf: &[u8; REPORT_SIZE],
+    prev: &[u8; REPORT_SIZE],
+    elapsed: std::time::Duration,
+) -> String {
+    let mins = elapsed.as_secs() / 60;
+    let secs = elapsed.as_secs() % 60;
+    let ms = elapsed.subsec_millis();
+    let ts = format!("[{:02}:{:02}.{:03}]", mins, secs, ms);
+    let marker = if buf != prev { "*" } else { " " };
+
+    if label == "col01" {
+        return sniff_decode_col01(&ts, marker, buf, prev);
+    }
+
+    match (buf[0], buf[1]) {
+        (0xFF, 0x03) => sniff_decode_ff03(&ts, marker, buf, prev),
+        (0xFF, 0x01) => sniff_decode_ff01(&ts, marker, buf),
+        (0xFF, 0x10) => sniff_decode_ff10(&ts, marker, buf, prev),
+        _ => {
+            let hex: String = buf[..16]
+                .iter()
+                .map(|b| format!("{:02X}", b))
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!("{}{} col03 ??: {}", ts, marker, hex)
+        }
+    }
+}
+
+/// Decode a Fanatec tuning response report (FF 03, buf[2] & 0x7F == 0x01).
+fn sniff_decode_ff03(
+    ts: &str,
+    marker: &str,
+    buf: &[u8; REPORT_SIZE],
+    prev: &[u8; REPORT_SIZE],
+) -> String {
+    if !is_tuning_report(buf) {
+        // Write command or unknown FF03 sub-type — just show the header bytes.
+        let hex: String = buf[..16]
+            .iter()
+            .map(|b| format!("{:02X}", b))
+            .collect::<Vec<_>>()
+            .join(" ");
+        return format!("{}{} col03 FF03-cmd: {}", ts, marker, hex);
+    }
+
+    let tp = parse_tuning_report(buf);
+    let sen_str = match tp.sen_degrees {
+        Some(d) => format!("{}deg", d),
+        None => "AUTO".to_string(),
+    };
+
+    // Append '*' to a value string when the underlying wire byte changed.
+    let chg = |addr: usize| if buf[addr] != prev[addr] { "*" } else { "" };
+
+    format!(
+        "{}{} col03 TUNING  slot={} SEN={}{} FF={}{} NDP={}{} NFR={}{} INT={}{} NIN={}{} FUL={}{}  \
+         SHO={}{} BLI={}{} FFS={}{} FOR={}{} SPR={}{} DPR={}{} BRF={}{} FEI={}{}",
+        ts,
+        marker,
+        tp.slot,
+        sen_str,
+        chg(tuning::ADDR_SEN),
+        tp.ff,
+        chg(tuning::ADDR_FF),
+        tp.ndp,
+        chg(ADDR_NDP),
+        tp.nfr,
+        chg(tuning::ADDR_NFR),
+        tp.int_,
+        chg(tuning::ADDR_INT),
+        tp.nin,
+        chg(tuning::ADDR_NIN),
+        tp.ful,
+        chg(tuning::ADDR_FUL),
+        tp.sho,
+        chg(tuning::ADDR_SHO),
+        tp.bli,
+        chg(tuning::ADDR_BLI),
+        tp.ffs,
+        chg(tuning::ADDR_FFS),
+        tp.for_,
+        chg(tuning::ADDR_FOR),
+        tp.spr,
+        chg(tuning::ADDR_SPR),
+        tp.dpr,
+        chg(tuning::ADDR_DPR),
+        tp.brf,
+        chg(tuning::ADDR_BRF),
+        tp.fei,
+        chg(tuning::ADDR_FEI),
+    )
+}
+
+/// Decode an LED report (FF 01): subcmd 0x00=rev, 0x01=flag, 0x02=btn-color, 0x03=btn-intensity.
+fn sniff_decode_ff01(ts: &str, marker: &str, buf: &[u8; REPORT_SIZE]) -> String {
+    match buf[2] {
+        0x00 => {
+            // Rev LEDs: byte 3 = count, then pairs of u16 RGB565 big-endian.
+            let count = (buf[3] as usize).min((REPORT_SIZE - 4) / 2);
+            let colors: Vec<String> = (0..count)
+                .map(|i| {
+                    let hi = buf[4 + i * 2] as u16;
+                    let lo = buf[5 + i * 2] as u16;
+                    format!("{:04X}", (hi << 8) | lo)
+                })
+                .collect();
+            format!(
+                "{}{} col03 LED-REV  {} colors: {}",
+                ts,
+                marker,
+                count,
+                colors.join(" ")
+            )
+        }
+        0x01 => {
+            let hex: String = buf[3..11]
+                .iter()
+                .map(|b| format!("{:02X}", b))
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!("{}{} col03 LED-FLAG  {}", ts, marker, hex)
+        }
+        0x02 => {
+            let commit = buf[3];
+            format!("{}{} col03 LED-BTN-COLOR   commit={}", ts, marker, commit)
+        }
+        0x03 => {
+            let commit = buf[3];
+            format!("{}{} col03 LED-BTN-INTENS  commit={}", ts, marker, commit)
+        }
+        _ => {
+            let hex: String = buf[..12]
+                .iter()
+                .map(|b| format!("{:02X}", b))
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!("{}{} col03 FF01-??: {}", ts, marker, hex)
+        }
+    }
+}
+
+/// Attempt protobuf field extraction from an FF 10 input report.
+/// Payload starts at buf[2]; leading zero padding is skipped.
+fn sniff_decode_ff10(
+    ts: &str,
+    marker: &str,
+    buf: &[u8; REPORT_SIZE],
+    prev: &[u8; REPORT_SIZE],
+) -> String {
+    let fields = sniff_parse_protobuf(&buf[2..]);
+
+    if fields.is_empty() {
+        let hex: String = buf[..16]
+            .iter()
+            .map(|b| format!("{:02X}", b))
+            .collect::<Vec<_>>()
+            .join(" ");
+        return format!("{}{} col03 FF10: {} [no pb fields]", ts, marker, hex);
+    }
+
+    // Build a map of previous field values for change annotation.
+    let prev_fields: std::collections::HashMap<u32, u64> = if prev[0] == 0xFF && prev[1] == 0x10 {
+        sniff_parse_protobuf(&prev[2..]).into_iter().collect()
+    } else {
+        std::collections::HashMap::new()
+    };
+
+    let parts: Vec<String> = fields
+        .iter()
+        .map(|&(fnum, val)| {
+            let changed = prev_fields.get(&fnum).is_none_or(|&pv| pv != val);
+            if changed {
+                format!("f{}={}*", fnum, val)
+            } else {
+                format!("f{}={}", fnum, val)
+            }
+        })
+        .collect();
+
+    // buf[2] == 0x16 is the sub-type that carries live tuning feedback (e.g. FF=27).
+    let subtype_tag = if buf[2] == 0x16 { " [TUNING]" } else { "" };
+    format!(
+        "{}{} col03 FF10{}: {}",
+        ts,
+        marker,
+        subtype_tag,
+        parts.join("  ")
+    )
+}
+
+/// Decode a col01 report: game state flags, steering axis, and device status.
+fn sniff_decode_col01(
+    ts: &str,
+    marker: &str,
+    buf: &[u8; REPORT_SIZE],
+    prev: &[u8; REPORT_SIZE],
+) -> String {
+    let game_flags = buf[3];
+    let steering = i16::from_le_bytes([buf[16], buf[17]]);
+    let device_status = u32::from_le_bytes([buf[30], buf[31], buf[32], buf[33]]);
+
+    let flags_chg = if game_flags != prev[3] { "*" } else { "" };
+    let steer_prev = i16::from_le_bytes([prev[16], prev[17]]);
+    let steer_chg = if steering != steer_prev { "*" } else { "" };
+    let status_prev = u32::from_le_bytes([prev[30], prev[31], prev[32], prev[33]]);
+    let status_chg = if device_status != status_prev {
+        "*"
+    } else {
+        ""
+    };
+
+    // Best-effort mapping of observed flag values to human-readable state names.
+    let state_name = match game_flags {
+        0x00 => "idle",
+        0x01 => "game",
+        0x02 => "in-session",
+        0x03 => "on-track",
+        _ => "?",
+    };
+
+    format!(
+        "{}{} col01  state={}/{:02X}{}  steer={}{}  status={:08X}{}",
+        ts,
+        marker,
+        state_name,
+        game_flags,
+        flags_chg,
+        steering,
+        steer_chg,
+        device_status,
+        status_chg,
+    )
+}
+
+/// Read a protobuf varint from `data` at `*pos`, advancing `*pos`. Returns None on truncation.
+fn sniff_read_varint(data: &[u8], pos: &mut usize) -> Option<u64> {
+    let mut result = 0u64;
+    let mut shift = 0u32;
+    loop {
+        if *pos >= data.len() {
+            return None;
+        }
+        let b = data[*pos];
+        *pos += 1;
+        result |= ((b & 0x7F) as u64) << shift;
+        if b & 0x80 == 0 {
+            return Some(result);
+        }
+        shift += 7;
+        if shift >= 64 {
+            return None;
+        }
+    }
+}
+
+/// Parse protobuf fields from a byte slice.
+/// Returns `(field_number, value)` pairs for varint (wire type 0) fields only.
+/// Non-varint fields are consumed and skipped; leading zero padding is ignored.
+fn sniff_parse_protobuf(data: &[u8]) -> Vec<(u32, u64)> {
+    let mut fields = Vec::new();
+    let mut pos = 0;
+    // Skip leading zero bytes (HID report padding).
+    while pos < data.len() && data[pos] == 0 {
+        pos += 1;
+    }
+    while pos < data.len() {
+        let tag = match sniff_read_varint(data, &mut pos) {
+            Some(t) if t != 0 => t,
+            _ => break,
+        };
+        let field_number = (tag >> 3) as u32;
+        match tag & 0x7 {
+            0 => {
+                // varint
+                match sniff_read_varint(data, &mut pos) {
+                    Some(val) => fields.push((field_number, val)),
+                    None => break,
+                }
+            }
+            1 => {
+                // 64-bit fixed
+                if pos + 8 > data.len() {
+                    break;
+                }
+                pos += 8;
+            }
+            2 => {
+                // length-delimited
+                match sniff_read_varint(data, &mut pos) {
+                    Some(len) => {
+                        let skip = len as usize;
+                        if pos + skip > data.len() {
+                            break;
+                        }
+                        pos += skip;
+                    }
+                    None => break,
+                }
+            }
+            5 => {
+                // 32-bit fixed
+                if pos + 4 > data.len() {
+                    break;
+                }
+                pos += 4;
+            }
+            _ => break, // unknown wire type — stop parsing
+        }
+    }
+    fields
 }
 
 // ---------------------------------------------------------------------------
