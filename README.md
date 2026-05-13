@@ -1,8 +1,29 @@
 # fanatec-tuner
 
-Reads Fanatec wheel tuning profiles from FanaLab `.pws` files and
-automatically applies them whenever you switch cars in iRacing. Works
-over USB HID — no Fanatec SDK, no FanaLab running.
+Automatic Fanatec wheel base tuning profile loader for sim racing. Monitors
+iRacing for car changes and applies matching `.pws` profiles — tuning
+parameters, rev LEDs, button LEDs — directly over USB HID. No FanaLab, no
+Fanatec App, no manual switching.
+
+---
+
+## Features
+
+- **Monitor mode** — polls iRacing shared memory every few seconds; on every
+  session entry it finds the matching profile and writes it to the wheel
+- **Full profile load** — writes all tuning parameters plus rev LED colors,
+  button LED colors and brightness, and flag LED defaults from the `.pws` file
+- **XML car list matching** — uses the Fanatec App's `CarsList` and
+  `ProfileCarsList` XMLs for exact `carPath → profile` matching; falls back to
+  filename fuzzy matching when XMLs are absent
+- **Fresh HID per write** — enumerates once at startup to capture device paths,
+  then opens a new handle for each write and closes it immediately; no stale
+  handles if the device is replugged
+- **Sniff mode** — passive read-only HID capture with `--decode` for structured
+  output: protobuf FF 10 field decode, tuning state diff, LED subcmd decode,
+  col01 game-state flags and steering axis
+- **No exclusive lock held** — the tool releases the HID device between writes
+  so other tools can interoperate
 
 ---
 
@@ -13,11 +34,14 @@ over USB HID — no Fanatec SDK, no FanaLab running.
 | ClubSport DD+ | `0x0020` | Confirmed working |
 | CSL DD / CSL DD Pro | `0x0020` | Same PID, likely works |
 | Podium DD1 / DD2 | `0x0006` / `0x0007` | Unconfirmed |
-| CSL Elite (PC, red LED) | `0x0E03` | Unconfirmed |
+| CSL Elite (PC) | `0x0E03` | Unconfirmed |
 
-All Fanatec bases share the same HID tuning protocol. The tool probes
-every `0x0EB7` device and selects the collection that responds to a
-tuning request (col03 on the DD+).
+All Fanatec bases share the same HID tuning protocol. The tool probes every
+`0x0EB7` device and selects the collection that responds to a tuning request
+(col03 on the DD+).
+
+Wheel LEDs are supported on any rim that exposes rev/button LED HID endpoints:
+Formula V2/V2.5, BMW M4 GT3, F1 Esports V2, and others.
 
 ---
 
@@ -25,73 +49,34 @@ tuning request (col03 on the DD+).
 
 | Game | Detection | Status |
 |------|-----------|--------|
-| iRacing | Shared memory (`Local\IRSDKMemMapFileName`) | Working |
-| Assetto Corsa EVO | Shared memory (`Local\acevo_pmf_static`) | Implemented |
-| Assetto Corsa / ACC | Shared memory (`Local\acpmf_static`) | Implemented |
+| iRacing | Shared memory (`Local\IRSDKMemMapFileName`) + session YAML | Working |
+| Assetto Corsa EVO | Shared memory (`Local\acevo_pmf_static`) | Implemented, untested |
+| Assetto Corsa / ACC | Shared memory (`Local\acpmf_static`) | Implemented, untested |
 
 AC1 and ACC share the same shared memory name and are both reported as
-`"Assetto Corsa"` — they are indistinguishable at the shared memory level.
-
----
-
-## Profile format
-
-fanatec-tuner reads `.pws` files from Maurice Böschen's FanaLab profile
-pack. These are XML files containing a `TuningMenuProfile > JSON` block
-with all tuning parameters.
-
-Profile filenames must follow the pattern:
-```
-{Game} {Car} - {FF} I {Torque}Nm.pws
-```
-Example: `iRacing Acura ARX-06 GTP - 54 I 15Nm.pws`
-
-The game name and car name are extracted from the filename stem. Fuzzy
-matching handles minor differences between the filename and iRacing's
-reported car name (substring, reverse substring, underscore→space
-normalization).
-
----
-
-## Hardware XML files
-
-fanatec-tuner optionally reads Fanatec App XML car list files for accurate
-profile matching. Without them, matching falls back to filename-based fuzzy
-matching.
-
-Files are resolved per-game in priority order:
-
-1. `profiles/xml/` — local override (see `profiles/xml/README.txt`)
-2. `C:\Program Files\Fanatec\FanatecService\Service\xml\` — auto-detected on Windows
-3. Custom path set via `[xml] path` in `fanatec-tuner.toml`
-
-When found, XML matching takes priority over filename fuzzy matching:
-- `ProfileCarsList_*.xml` maps iRacing/AC carPath identifiers directly to `.pws` filenames (highest confidence)
-- `CarsList_*.xml` maps carPath identifiers to display names (used for fuzzy fallback)
-
-These files also contain LED color tables, button LED layouts, and ITM telemetry
-configurations that will be used for future LED and display control.
-
-To use XML matching without the Fanatec App installed, copy the XML files from
-a machine that has the App to your local `profiles/xml/` directory.
+`"Assetto Corsa"`.
 
 ---
 
 ## Setup
 
-### 1. Stop the Fanatec App and service
+### 1. Download
 
-The Fanatec App (`FWPnpService`) holds the HID device with exclusive
-access. Stop it before running fanatec-tuner:
+Grab `fanatec-tuner.exe` from the [latest release](https://github.com/t-hovestadt/fanatec-tuner/releases/latest).
+
+### 2. Stop the Fanatec service
+
+The Fanatec wheel service holds the HID device with exclusive access.
+Stop it before running fanatec-tuner:
 
 ```
-net stop FWPnpService
+net stop "Fanatec Wheel Service"
 ```
 
-Or open `services.msc` and stop **Fanatec Wheel Service**. You can also
-exit the Fanatec App from the system tray.
+Or open `services.msc` and stop **Fanatec Wheel Service**. You can also exit
+the Fanatec App from the system tray — this is usually sufficient.
 
-### 2. Place files
+### 3. Place your files
 
 ```
 D:\Simracing\
@@ -104,7 +89,7 @@ D:\Simracing\
         └── ...
 ```
 
-### 3. Create fanatec-tuner.toml
+### 4. Create `fanatec-tuner.toml`
 
 ```toml
 [profiles]
@@ -114,105 +99,197 @@ path = "profiles/CS DD+"
 scan_interval = 3
 ```
 
+### 5. Run it
+
+```bat
+@echo off
+net stop "Fanatec Wheel Service"
+timeout /t 3 /nobreak >nul
+D:\Simracing\fanatec-tuner.exe monitor
+net start "Fanatec Wheel Service"
+```
+
 ---
 
-## Usage
+## Commands
 
 ```
-fanatec-tuner              # Read current tuning values from wheel
-fanatec-tuner list         # List all profiles from configured directory
-fanatec-tuner scan         # Verbose profile list with game/car mapping
-fanatec-tuner apply <file> # Apply a specific .pws profile
-fanatec-tuner monitor      # Auto-detect game + car, apply matching profile
-fanatec-tuner diag         # HID diagnostic — dump collections and capabilities
+fanatec-tuner                # Read current tuning values from the wheel
+fanatec-tuner apply <file>   # Apply a specific .pws profile
+fanatec-tuner monitor        # Auto-detect car changes and apply matching profiles
+fanatec-tuner list           # List all profiles from the configured directory
+fanatec-tuner scan           # Verbose profile list with game/car mapping
+fanatec-tuner sniff          # Passive HID capture (read-only, first 32 bytes)
+fanatec-tuner sniff --decode # Structured HID decode (tuning, LED, protobuf, col01)
+fanatec-tuner sniff --verbose # Full 64-byte raw capture
+fanatec-tuner diag           # HID diagnostic — dump collections and capabilities
 ```
 
 ### Monitor mode
 
-`fanatec-tuner monitor` polls iRacing shared memory every 3 seconds
-(configurable via `monitor.scan_interval`). When the active car changes,
-it finds the matching `.pws` profile and applies it automatically.
+`fanatec-tuner monitor` polls iRacing shared memory on a configurable interval
+(default 3 seconds). On every scan where a game session is active it applies
+the matching profile — there is no same-car deduplication, so every session
+entry (including transitions between practice, qualifying, and race) re-applies
+the profile.
 
-Profile matching priority:
-1. Exact game name + exact car name
-2. Game prefix match + exact car name
+A 30-second grace period prevents false exits during iRacing session
+transitions, which briefly drop the shared memory mapping.
+
+**Profile matching** — tried in order:
+
+1. `ProfileCarsList_*.xml` → exact `carPath → .pws filename` (highest
+   confidence; requires Fanatec App XML files)
+2. `CarsList_*.xml` → `carPath → display name` → fuzzy match
+3. Filename fuzzy match on the detected car display name
+4. Fanatec App recommended profile for the game (fallback)
+
+**Fuzzy matching** steps, each tried in order:
+
+1. Exact game + exact car name
+2. Game prefix + exact car name
 3. Game prefix + profile car name contains detected car name
 4. Game prefix + detected car name contains profile car name
 
-iRacing session transitions (practice → qualify → race) briefly remove
-the game process. fanatec-tuner waits 30 seconds before declaring the
-game exited, so a profile is not needlessly re-applied between sessions.
+---
+
+## Profile format
+
+`.pws` files from Maurice Böschen's FanaLab profile pack (or your own exports
+from the Fanatec App). Each file is an XML container with JSON blocks for:
+
+| Section | Contents |
+|---------|----------|
+| `TuningMenuProfile` | FF, SEN, NDP, NFR, INT, NIN, FUL, SHO, BLI, FFS, FOR, SPR, DPR, BRF, FEI |
+| `RevLedProfileWheel` | Per-gear rev LED colors (up to 9 LEDs, RGB color index) |
+| `ButtonLedProfile` | Button LED colors (R/G/B 0–15) and brightness (0–15) per button |
+| `FlagLed` | Flag LED assignments (sent as all-off; firmware overrides on flag events) |
+
+Profile filenames follow the pattern:
+
+```
+{Game} {Car} - {FF} I {Torque}Nm.pws
+```
+
+Example: `iRacing BMW M4 GT3 - 58 I 18Nm.pws`
 
 ---
 
-## How writes work
+## XML car list files
 
-The DD+ requires a **wake toggle** (CMD `0x06`) sent immediately before
-every write. The toggle opens a write window for exactly one write cycle;
-subsequent writes without another toggle are silently ignored.
+Fanatec App installs XML files that map internal car identifiers to display
+names and recommended profiles. fanatec-tuner reads these for exact matching.
 
-Flow for each profile apply:
+**Auto-detected paths (checked in order):**
+
+1. `profiles/xml/` next to the exe — local override, copy files here if you
+   don't have the Fanatec App installed
+2. Fanatec App install path (from registry or known default)
+3. `C:\Program Files\Fanatec\FanatecService\Service\xml\`
+4. Custom path set via `[xml] path` in `fanatec-tuner.toml`
+
+When present, `ProfileCarsList_*.xml` gives exact `carPath → .pws filename`
+mapping; `CarsList_*.xml` gives `carPath → display name` for fuzzy fallback.
+
+---
+
+## HID protocol reference
+
+All reports are 64 bytes, report ID `0xFF`.
+
+| Direction | Byte 1 | Byte 2 | Description |
+|-----------|--------|--------|-------------|
+| Write | `0x03` | `0x06` | Wake toggle — required before every write |
+| Write | `0x03` | `0x00` | Write all tuning params (full 64-byte buffer) |
+| Write | `0x03` | `0x02` | Request current values |
+| Write | `0x03` | `0x03` | SAVE — persist LED config to firmware flash |
+| Write | `0x01` | `0x00` | Rev LEDs — up to 9 × RGB565 colors |
+| Write | `0x01` | `0x01` | Flag LEDs — up to 6 × RGB565 colors |
+| Write | `0x01` | `0x02` | Button LED colors — up to 12 × RGB565 + commit byte |
+| Write | `0x01` | `0x03` | Button LED intensities — up to 16 × 0–7 + commit byte |
+| Read | `0x03` | `0x01` | Tuning response (standard mode) |
+| Read | `0x03` | `0x81` | Tuning response (advanced mode) |
+| Read | `0x10` | — | Device status — protobuf-encoded, wire type 0 varints |
+
+**RGB565 encoding:** blue bits 15–11, green 10–5, red 4–0, packed big-endian.
+
+The DD+ requires a wake toggle (`CMD 0x06`) immediately before every write.
+The toggle opens a write window for one cycle; subsequent writes without
+another toggle are silently ignored.
+
+Write flow per profile apply:
+
 ```
-1. Send CMD 0x04 (request values) → read current state
-2. Build 64-byte write buffer with all parameters
-3. Send CMD 0x06 (wake toggle) — opens write window
+1. Send CMD 0x02 (request values) → read current state into base buffer
+2. Build 64-byte write buffer: copy base[2..62] → write[3..63], overlay params
+3. Send CMD 0x06 (wake toggle)
 4. Sleep 500 ms
-5. Send CMD 0x00 (write) — all parameters in one report
+5. Send CMD 0x00 (write all params)
 6. Sleep 200 ms
-7. Send CMD 0x04 (request values) → read back and diff
+7. Send CMD 0x02 (request values) → readback and diff
+8. Send LED reports (rev, flag, button colors, button intensities)
+9. Send CMD 0x03 (SAVE)
 ```
-
-All parameters are sent in a single 64-byte report. Sending each
-parameter in a separate report does not work on the DD+ — readback shows
-no change.
-
-See [PROTOCOL.md](PROTOCOL.md) for the full protocol reference.
-
----
-
-## Known limitations
-
-- **Fanatec App must be stopped** — it holds the HID device with
-  exclusive access. fanatec-tuner will fail to open the device with
-  `ERROR_SHARING_VIOLATION` if the App or `FWPnpService` is running.
-- **AC / EVO / ACC unconfirmed on hardware** — car detection is
-  implemented via shared memory but has not been tested on a real AC
-  installation.
-- **AC1 and ACC indistinguishable** — both use `Local\acpmf_static`;
-  fanatec-tuner reports both as `"Assetto Corsa"`.
-- **Apply takes ~1.5 seconds** — the 500 ms post-toggle sleep is
-  required by the device before it will accept the write.
 
 ---
 
 ## Building from source
 
-Requires Rust stable and the Windows cross-compile target:
+Requires Rust stable and a Windows target:
 
-```
+```sh
+# Cross-compile from macOS/Linux
 rustup target add x86_64-pc-windows-gnu
-brew install mingw-w64   # macOS
+brew install mingw-w64
 cargo build --release --target x86_64-pc-windows-gnu
+
+# Native Windows build
+cargo build --release
 ```
 
-CI builds on `windows-latest`. Always run clippy against the Windows
-target before pushing `#[cfg(windows)]` code:
+Always lint against the Windows target before pushing `#[cfg(windows)]` code:
 
-```
+```sh
 cargo clippy --target x86_64-pc-windows-gnu -- -D warnings
+```
+
+CI builds on `windows-latest` on every push and uploads the exe as an artifact.
+
+---
+
+## Configuration reference
+
+```toml
+[profiles]
+# Directory containing .pws files (default: "profiles")
+path = "profiles/CS DD+"
+
+[monitor]
+# How often to poll for car changes, in seconds (default: 3)
+scan_interval = 3
+
+[xml]
+# Optional custom path to Fanatec App XML car list files
+path = "C:/path/to/xml"
+
+[fanatec_app]
+# Optional override for the Fanatec App install directory
+path = "C:/Program Files/Fanatec/FanatecService"
 ```
 
 ---
 
 ## Planned features
 
-- **Assetto Corsa / EVO / ACC monitor support** — shared-memory car detection
-  is implemented; wiring into the monitor loop is pending.
-- **LED and display control** — `.pws` profiles contain per-rim LED
-  configurations (`RevLedProfileWheel`, `ButtonLedProfile`, `DisplayLedProfile`,
-  `ITMPRofile`). LED control will be wheel-specific: the attached rim will be
-  detected and matched against the profile's `WheelType` to select the correct
-  section.
+- **RPM-driven rev LED control** — read iRacing shared memory at ~30 Hz and
+  send real-time LED updates based on actual RPM, replacing the Fanatec App's
+  static preset
+- **Per-car shift point extraction** — pull RPM limits from iRacing session
+  YAML for accurate shift light timing per car
+- **AC / EVO monitor wiring** — detection is implemented; profile
+  auto-apply for non-iRacing games is pending
+- **Fanatec App recommended profile fallback** — already loaded and used as
+  a last-resort match when no per-car profile exists
 
 ---
 
@@ -220,4 +297,4 @@ cargo clippy --target x86_64-pc-windows-gnu -- -D warnings
 
 - **Maurice Böschen** — FanaLab tuning profiles for 900+ cars
 - **[hid-fanatecff](https://github.com/gotzl/hid-fanatecff)** —
-  open-source Linux kernel driver; protocol reverse-engineered from source
+  open-source Linux kernel driver; wire protocol reverse-engineered from source
