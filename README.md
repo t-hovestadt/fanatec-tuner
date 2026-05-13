@@ -78,15 +78,50 @@ roadmap.
 
 ---
 
+## Prerequisites
+
+- Fanatec wheel base connected via USB
+- Fanatec driver installed and `FWPnpService` running — HID reads fail without
+  it; do not stop this service
+- iRacing installed on the same PC
+- `.pws` profile files (see [Getting Profiles](#getting-profiles) below)
+
+---
+
+## Getting Profiles
+
+fanatec-tuner reads `.pws` files from FanaLab or the Fanatec App.
+
+**Maurice's FanaLab Profiles (recommended)** — per-car profiles with full
+tuning and LED settings for iRacing, AC, and ACC. Download V2.01.63 from the
+Fanatec forum:
+https://forum.fanatec.com/topic/990-fanalab-share-your-favorite-profiles/
+
+**Fanatec App export** — open the Fanatec App → Game Profile Management →
+select a profile → export as `.pws`. Note: the built-in recommended profiles
+only contain tuning parameters, not LED color settings.
+
+**XML car lists** — copy two files from the Fanatec App installation into your
+profiles folder:
+
+```
+C:\Program Files\Fanatec\FanatecService\Service\xml\ProfileCarsList_iRacing.xml
+C:\Program Files\Fanatec\FanatecService\Service\xml\CarsList_iRacing.xml
+```
+
+If the Fanatec App is installed, fanatec-tuner finds these automatically.
+
+---
+
 ## Quick Start
 
 1. Download `fanatec-tuner.exe` from the
    [latest release](https://github.com/t-hovestadt/fanatec-tuner/releases/latest)
-2. Place it in your sim racing folder (e.g. `D:\Simracing\`)
-3. Place your `.pws` profiles in a subfolder
-4. Copy the Fanatec XML car lists into an `xml\` subfolder alongside
-   the profiles (source: `C:\Program Files\Fanatec\FanatecService\Service\xml\`)
-5. Create `fanatec-tuner.toml` (see below) and a bat file, then run it
+2. Download Maurice's FanaLab profiles and extract the iRacing `.pws` files
+3. Copy `ProfileCarsList_iRacing.xml` and `CarsList_iRacing.xml` from the
+   Fanatec App `xml\` folder
+4. Create the folder layout below and a `fanatec-tuner.toml`
+5. Create a bat file (see Bat Files below) and run it
 
 ---
 
@@ -98,29 +133,33 @@ roadmap.
 D:\Simracing\
 ├── fanatec-tuner.exe
 ├── fanatec-tuner.toml
+├── start-fanatec-tuner.bat
 └── profiles\
-    ├── xml\
-    │   ├── CarsList_iRacing.xml
-    │   └── ProfileCarsList_iRacing.xml
-    └── CS DD+\
-        ├── iRacing Acura ARX-06 GTP - 54 I 15Nm.pws
-        ├── iRacing BMW M4 GT3 - 58 I 18Nm.pws
-        └── ...
+    ├── CarsList_iRacing.xml
+    ├── ProfileCarsList_iRacing.xml
+    ├── iRacing Global Mazda MX-5 Cup - 27 I 15Nm.pws
+    ├── iRacing FIA F4 - 70 I 15Nm.pws
+    ├── iRacing Dallara IR18 - 93 I 15Nm.pws
+    └── ...
 ```
 
 ### fanatec-tuner.toml
 
 ```toml
 [profiles]
-path = "profiles/CS DD+"
+path = "profiles"
 
 [monitor]
 scan_interval = 3   # seconds between polls (default: 3)
+
+[xml]
+path = "profiles"   # look for XML files here too
 ```
 
-The tool also auto-detects Fanatec App XML files at
+If the Fanatec App is installed, fanatec-tuner also auto-detects XML files at
 `C:\Users\Public\Fanatec\OneFanatec\` and
-`C:\Program Files\Fanatec\FanatecService\Service\xml\`.
+`C:\Program Files\Fanatec\FanatecService\Service\xml\` — no manual copy needed
+in that case.
 
 ---
 
@@ -131,14 +170,12 @@ The tool also auto-detects Fanatec App XML files at
 ```bat
 @echo off
 cd /d "%~dp0"
-echo Stopping Fanatec Wheel Service...
-net stop FWPnpService >nul 2>&1
-timeout /t 3 /nobreak >nul
+echo Closing Fanatec App (if running)...
+taskkill /im Fanatec.exe /f >nul 2>&1
+timeout /t 2 /nobreak >nul
 
 fanatec-tuner.exe monitor
 
-echo Restarting Fanatec Wheel Service...
-net start FWPnpService >nul 2>&1
 pause
 ```
 
@@ -162,6 +199,35 @@ pause
 
 ---
 
+## Example Output
+
+What you should see when monitor mode is working:
+
+```
+Using col03  (ClubSport DD+, PID 0x0020)
+col01 (display/ACK) found
+47 profile(s) loaded
+Monitoring — press Ctrl-C to stop
+
+[09:14:22] iRacing / Global Mazda MX-5 Cup → applying profiles\iRacing Global Mazda MX-5 Cup - 27 I 15Nm.pws
+  [led] rev: 9 colors
+  [led] buttons: 12 sent
+  [led] saved
+[09:47:31] iRacing / FIA F4 → applying profiles\iRacing FIA F4 - 70 I 15Nm.pws
+  [led] rev: 9 colors
+  [led] buttons: 12 sent
+  [led] saved
+[10:12:08] Game exited — wheel unchanged
+```
+
+If a car has no matching profile:
+
+```
+[09:51:03] iRacing / Dallara P217 → no matching profile
+```
+
+---
+
 ## Commands
 
 ```
@@ -176,8 +242,14 @@ fanatec-tuner sniff --verbose     Full 64-byte raw capture
 fanatec-tuner diag                HID diagnostic — dump collections and caps
 ```
 
-The Fanatec Wheel Service (`FWPnpService`) must be stopped before running any
-command except `sniff`. The service holds an exclusive write handle.
+Close the Fanatec App (`Fanatec.exe`) before running write commands to avoid
+conflicts. Do **not** stop `FWPnpService` — it is required for HID
+communication and the tool will fail to enumerate devices without it.
+
+Press **Ctrl+C** to stop monitor mode. On exit, the last-applied profile
+remains active — fanatec-tuner does not restore defaults or clear LEDs.
+
+If you encounter `Access Denied` errors, try running as administrator.
 
 ---
 
@@ -285,6 +357,42 @@ path = "C:/path/to/xml"
 # (auto-detected at C:\Users\Public\Fanatec\OneFanatec)
 path = "C:/Users/Public/Fanatec/OneFanatec"
 ```
+
+---
+
+## Troubleshooting
+
+**No Fanatec device found / device not found after 60 s**
+- Check the USB cable and that the wheel base is powered on
+- Confirm the Fanatec driver is installed (`FWPnpService` must be running —
+  open `services.msc` to verify)
+- Try a different USB port
+
+**Profile not found for car X**
+- Check that `ProfileCarsList_iRacing.xml` is in the profiles folder and
+  contains a mapping for that car's `carPath`
+- Run `fanatec-tuner scan` to see which profiles were loaded and what car
+  names they matched to
+- If the XML is missing, fuzzy filename matching is used — ensure the `.pws`
+  filename contains the car name as iRacing reports it
+
+**Write failed / values not applying**
+- Close the Fanatec App (`Fanatec.exe`) — it competes for the write handle
+- Try running `fanatec-tuner.exe` as administrator
+- Run `fanatec-tuner diag` to check which HID collections respond
+
+**Tuning values apply but then revert**
+- The Fanatec App may be running in the background and overwriting values;
+  close it completely (system tray → exit)
+
+**LEDs don't change color on car switch**
+- Confirm the `.pws` profile has a `RevLedProfileWheel` section (Maurice's
+  profiles do; Fanatec App recommended exports often do not)
+- Check that iRacing's **Use Wheel Shift Indicator** is set correctly — see
+  [iRacing Shift LEDs](#iracing-shift-leds) above
+
+**Access Denied errors**
+- Run `fanatec-tuner.exe` as administrator (right-click → Run as administrator)
 
 ---
 
