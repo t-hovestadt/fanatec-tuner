@@ -1,6 +1,48 @@
 # Changelog
 
-## Phase 3 (current)
+## Phase 4 (current)
+
+### Added
+
+- Per-car shift light LED profile database: 110 active car profiles with
+  verified fill pattern, color stages, flash color, and pit limiter color;
+  sourced from 56 iRacing user manuals (Batch 1 + Batch 2 PDF extraction)
+- `docs/SHIFT_LIGHTS.md`: user-facing per-car LED profile catalog with
+  fill pattern diagrams and full 109-car table
+- `docs/HARDWARE.md`: supported hardware guide — wheel bases, steering wheels,
+  button modules, RGB565/RGB555 encoding, known limitations
+- Real-time rev LED animation at 30 Hz: reads live RPM from iRacing shared
+  memory (`RevLedProfile.rpm_thresholds`), drives LED strip per LED threshold;
+  flash pattern fires when RPM exceeds `RevLedProfile.flash_threshold`
+- `compute_rev_leds()` in `src/led.rs`: RPM → 9-LED state computation with
+  per-LED threshold lookup and blink-on/off flash support
+- `led_thread()` in `src/monitor.rs`: persistent HID thread owns col03 handle,
+  receives `LedCmd::CarChanged` / `LedCmd::GameExited` via mpsc channel;
+  33 ms tick; dirty-flag LED writes (only sends report when LED state changes)
+- PROTOCOL.md: complete rewrite — all HID report formats, SEN encoding, RGB565
+  table, IRSDK shared memory layout, ColorIndex mapping, wheel capabilities,
+  legacy protocol notes
+
+### Fixed
+
+- Cadillac V-Series.R GTP flash color: reverted to blue (`#0000FF`) — v2
+  manual explicit: "all LEDs will change to blue and begin flashing" (Batch 1
+  had incorrectly set red, misreading the progression-state description)
+- McLaren 570S GT4: corrected to `outside_center` pattern with v2 RPM-stage
+  mapping ("outer edges inwardly"); pit limiter blue
+- Mercedes-AMG GT4: corrected to `outside_center` with full stage mapping from
+  v2 manual; flash red, pit yellow flash
+- BMW M4 F82 GT4: flash color `#FFFF00` (last active stage color); pit limiter
+  screen-only — v2 manual: "red banner / PSL light", no LED flash
+- Aston Martin Vantage GT4: flash `#0000FF`, pit limiter green flash — v2
+  manual: "upshift when all are flashing blue"; "all shift lights flash green"
+- BMW M Hybrid V8 GTP: pit limiter set to screen-only (magenta box on display,
+  not the LED strip) — v2 manual: "magenta box next to the gear indicator"
+- 14 oval/dirt/NASCAR car notes updated with v2 manual confirmation text
+
+---
+
+## Phase 3
 
 ### Added
 

@@ -29,6 +29,17 @@ Replaces manual profile switching in FanaLab or the Fanatec App.
 
 ---
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [PROTOCOL.md](PROTOCOL.md) | HID wire protocol reference — report formats, commands, SEN encoding, RGB565 table, IRSDK layout |
+| [docs/SHIFT_LIGHTS.md](docs/SHIFT_LIGHTS.md) | Per-car shift light LED profiles — fill patterns, colors, flash behavior, 109-car catalog |
+| [docs/HARDWARE.md](docs/HARDWARE.md) | Supported wheel bases, steering wheels, and button modules |
+| [CHANGELOG.md](CHANGELOG.md) | Version history |
+
+---
+
 ## Supported Hardware
 
 | Device | PID | Status |
@@ -78,10 +89,13 @@ does not animate LEDs on its own.
   App drives LEDs with per-car auto presets (custom colors, thresholds, flash
   timing). Requires the Fanatec App running alongside fanatec-tuner.
 
-- **Planned** — real-time RPM-driven LED control built into fanatec-tuner:
-  read RPM from iRacing shared memory, apply per-car thresholds from session
-  YAML (`SLFirstRPM`, `SLLastRPM`, `SLShiftRPM`, `SLBlinkRPM`), send LED
-  commands at 30 Hz. This will fully replace the Fanatec App for LED control.
+- **Built-in real-time LED control** — fanatec-tuner reads live RPM from
+  iRacing shared memory at 30 Hz, computes per-LED state from thresholds in
+  the `.pws` profile (`RevLedProfile.rpm_thresholds`), and sends `FF 01 00`
+  LED commands only when the LED state changes. Flash pattern fires when RPM
+  exceeds `RevLedProfile.flash_threshold`. No Fanatec App needed for LED
+  control. Set **Use Wheel Shift Indicator** to **OFF** in iRacing (Options →
+  Interface → External Displays) to disable iRacing's own LED driver.
 
 Button LED colors and brightness are static (set once per car change) and work
 independently of the above.
@@ -431,27 +445,20 @@ cargo clippy --target x86_64-pc-windows-gnu -- -D warnings
 
 ## Roadmap
 
-### Planned: Real-time LED Control
+### Completed: Real-time LED Control
 
-The next major feature is a real-time RPM-driven LED loop that fully replaces
-the Fanatec App's auto preset:
+Real-time RPM-driven LED control is live. fanatec-tuner reads live RPM from
+iRacing shared memory at 30 Hz and drives the wheel LED strip with per-car
+color profiles and flash patterns — no Fanatec App required.
 
-- Read live RPM from iRacing shared memory at 60 Hz
-- Read per-car shift light RPM values from session YAML
-  (`DriverCarSLFirstRPM`, `SLLastRPM`, `SLShiftRPM`, `SLBlinkRPM`)
-- Compute LED state: which LEDs are lit based on current RPM vs per-car
-  thresholds
-- Apply color palette from `.pws` profile
-- Send `FF 01 00` LED commands at 30 Hz
-- Flash pattern at `SLBlinkRPM` (shift warning)
+Per-car LED profiles (fill direction, color stages, flash color, pit limiter)
+are sourced from iRacing user manuals for 109 cars.
+See [docs/SHIFT_LIGHTS.md](docs/SHIFT_LIGHTS.md) for the full catalog.
+
+### Planned
+
+- Flag LED control from iRacing session flags (yellow/blue/checkered)
 - Gear display on 7-segment via col01
-- Flag LEDs from iRacing flag state telemetry
-
-This will make fanatec-tuner a complete replacement for the Fanatec App —
-tuning AND LED control from a single tool.
-
-### Other
-
 - AC / ACC / AC EVO car detection active in monitor
 - UI for viewing and adjusting current tuning values
 - Integration into sim-teleport
