@@ -1,3 +1,4 @@
+mod car_leds;
 mod carlist;
 mod config;
 mod display;

@@ -1,0 +1,908 @@
+[
+  {
+    "car_id": "mazda mx-5 cup",
+    "iracing_car_paths": ["mx5mx52016", "mx5cup", "mx5roadster"],
+    "pattern": "outside_center",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1, 9], "color": "stage1" },
+      { "leds": [2, 8], "color": "stage1" },
+      { "leds": [3, 7], "color": "stage2" },
+      { "leds": [4, 6], "color": "stage2" },
+      { "leds": [5],    "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Pairs illuminate outside to center; flash red at shift point"
+  },
+  {
+    "car_id": "ford mustang gt3",
+    "iracing_car_paths": ["fordmustanggt3"],
+    "pattern": "outside_center",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1, 9], "color": "stage1" },
+      { "leds": [2, 8], "color": "stage1" },
+      { "leds": [3, 7], "color": "stage2" },
+      { "leds": [4, 6], "color": "stage2" },
+      { "leds": [5],    "color": "stage3" }
+    ],
+    "flash_color": "#0000FF",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFFFF",
+    "pit_limiter_flash": true,
+    "notes": "Pairs illuminate outside to center; all turn blue at shift point; 6 white flashing pit limiter lights"
+  },
+  {
+    "car_id": "gen3 supercars",
+    "iracing_car_paths": ["supercarschevycamarogen3", "supercarsfordmustanggen3", "v8supercarsfordmustanggt"],
+    "pattern": "outside_center",
+    "led_count": 8,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00"
+    },
+    "stages": [
+      { "leds": [1, 9], "color": "stage1" },
+      { "leds": [2, 8], "color": "stage1" },
+      { "leds": [3, 7], "color": "stage2" },
+      { "leds": [4, 6], "color": "stage2" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#0000FF",
+    "pit_limiter_flash": true,
+    "notes": "8 LEDs on real car; center LED (5) not used; pairs fill outside-in; pit limiter color-coded to speed (blue/green/red)"
+  },
+  {
+    "car_id": "porsche 963 gtp",
+    "iracing_car_paths": ["porsche963gtp"],
+    "pattern": "outside_center",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1, 9], "color": "stage1" },
+      { "leds": [2, 8], "color": "stage1" },
+      { "leds": [3, 7], "color": "stage2" },
+      { "leds": [4, 6], "color": "stage2" },
+      { "leds": [5],    "color": "stage2" }
+    ],
+    "flash_color": "#0000FF",
+    "flash_hz": 15,
+    "pit_limiter_color": "#00FF00",
+    "pit_limiter_flash": false,
+    "notes": "Outside-in pairs, green outside to red inside; all flash blue at optimum shift point; pit limiter: green display overlay with speed-based side LEDs"
+  },
+  {
+    "car_id": "bmw m4 f82 gt4",
+    "iracing_car_paths": ["bmwm4gt4"],
+    "pattern": "outside_center",
+    "led_count": 8,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00"
+    },
+    "stages": [
+      { "leds": [1, 9], "color": "stage1" },
+      { "leds": [2, 8], "color": "stage1" },
+      { "leds": [3, 7], "color": "stage2" },
+      { "leds": [4, 6], "color": "stage2" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FF0000",
+    "pit_limiter_flash": true,
+    "notes": "8 LEDs, illuminate from outer edges inward; in 3rd gear: 2 green@6450, 4 green@6600, 2 yellow@6750, 4 yellow@6900, all flash@7050; RPM shift point varies per gear"
+  },
+  {
+    "car_id": "fia f4",
+    "iracing_car_paths": ["formulair04"],
+    "pattern": "left_right",
+    "led_count": 6,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage1" },
+      { "leds": [5], "color": "stage1" },
+      { "leds": [6], "color": "stage1" },
+      { "leds": [7], "color": "stage2" },
+      { "leds": [8], "color": "stage2" },
+      { "leds": [9], "color": "stage2" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#00FF00",
+    "pit_limiter_flash": false,
+    "notes": "6 LEDs on real car (4 green + 2 red), mapped to 9; RPM thresholds: green 6300/6500/6600/6700, red 6800/6900, all flash 7000; pit limiter shows green box on display"
+  },
+  {
+    "car_id": "bmw m4 gt3",
+    "iracing_car_paths": ["bmwm4gt3"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage2" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage2" },
+      { "leds": [8], "color": "stage2" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FF00FF",
+    "pit_limiter_flash": true,
+    "notes": "2 green + 6 yellow + 1 red sequential L→R; all flash red at shift; pit limiter = all magenta"
+  },
+  {
+    "car_id": "dallara ir18 indycar",
+    "iracing_car_paths": ["dallarair18"],
+    "pattern": "left_right",
+    "led_count": 10,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#0000FF",
+    "flash_hz": 15,
+    "pit_limiter_color": "#0000FF",
+    "pit_limiter_flash": true,
+    "notes": "10 LEDs on real car mapped to 9; green→yellow→red L→R then all turn blue and flash near 12,000 RPM redline; push-to-pass: inner status LEDs go green; pit: all shift lights flash blue, yellow display border"
+  },
+  {
+    "car_id": "ferrari 296 gt3",
+    "iracing_car_paths": ["ferrari296gt3"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "L→R sequential, all red at shift; side LEDs: magenta = front brake lockup, cyan = rear lockup"
+  },
+  {
+    "car_id": "chevrolet corvette z06 gt3",
+    "iracing_car_paths": ["chevyvettez06rgt3"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "L→R sequential; all red flash at shift point; all blue if pushed past redline into overrev zone"
+  },
+  {
+    "car_id": "acura nsx gt3 evo 22",
+    "iracing_car_paths": ["acuransxevo22gt3"],
+    "pattern": "left_right",
+    "led_count": 10,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "10 LEDs on real car mapped to 9; all turn red at shift point; L→R sequential fill"
+  },
+  {
+    "car_id": "mercedes-amg gt3 2020",
+    "iracing_car_paths": ["mercedesamgevogt3"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "L→R sequential fill; all flash red at ~7025 RPM shift point"
+  },
+  {
+    "car_id": "toyota gr86",
+    "iracing_car_paths": ["toyotagr86"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Digital tachometer display; final red LED (9) at ~7100 RPM = optimal shift; all flash at ~7200 RPM = overrev warning"
+  },
+  {
+    "car_id": "bmw m2 cs racing",
+    "iracing_car_paths": ["bmwm2csr"],
+    "pattern": "left_right",
+    "led_count": 10,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "10 LEDs on real car mapped to 9; all illuminated = upshift recommended; color sequence not explicitly documented in manual"
+  },
+  {
+    "car_id": "porsche 911 gt3 cup 992",
+    "iracing_car_paths": ["porsche992cup"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#0000FF",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "All flash blue at shift; per-gear shift points: 7900 (1st) to 9000 (6th); iRacing updates DriverCarSLShiftRPM per gear automatically"
+  },
+  {
+    "car_id": "porsche 911 gt3 r 992",
+    "iracing_car_paths": ["porsche992rgt3"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#0000FF",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Cluster fills L→R; all turn blue at optimum shift point"
+  },
+  {
+    "car_id": "lamborghini huracan gt3 evo",
+    "iracing_car_paths": ["lamborghinievogt3"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#0000FF",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Sequential L→R fill; all turn blue at ~8000 RPM shift point"
+  },
+  {
+    "car_id": "porsche 718 cayman gt4",
+    "iracing_car_paths": ["porsche718gt4"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Sequential L→R fill; all illuminated at 7500 RPM = shift point; side LEDs: yellow = front lockup pair, purple = rear wheelspin pair"
+  },
+  {
+    "car_id": "audi r8 lms evo ii gt3",
+    "iracing_car_paths": ["audir8lmsevo2gt3"],
+    "pattern": "left_right",
+    "led_count": 10,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#0000FF",
+    "pit_limiter_flash": true,
+    "notes": "10 LEDs on real car mapped to 9; upshift when final red light in sequence is illuminated; pit limiter: 6 LEDs blue"
+  },
+  {
+    "car_id": "mclaren 720s gt3",
+    "iracing_car_paths": ["mclaren720sgt3"],
+    "pattern": "all_at_once",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#0000FF"
+    },
+    "stages": [
+      { "leds": [1, 2, 3, 4, 5, 6, 7, 8, 9], "color": "stage1" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "All 9 LEDs illuminate blue simultaneously as shift approach; flash red at overrev; unique two-state pattern (off → all blue → flash red)"
+  },
+  {
+    "car_id": "acura arx-06 gtp",
+    "iracing_car_paths": ["acuraarx06gtp"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FF00FF",
+    "pit_limiter_flash": true,
+    "notes": "Green (left) → red (right) L→R; all change to red and flash at optimum shift; RPM limit ~9,985; pit: shift lights and side clusters turn pink; speed indicator converges to center"
+  },
+  {
+    "car_id": "bmw m hybrid v8 gtp",
+    "iracing_car_paths": ["bmwlmdh"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FF00FF",
+    "pit_limiter_flash": true,
+    "notes": "Green (left) → red (right) L→R; all change to red and flash at optimum shift; RPM limit ~8,200; pit: magenta PSL box appears next to gear indicator"
+  },
+  {
+    "car_id": "cadillac v-series.r gtp",
+    "iracing_car_paths": ["cadillacvseriesrgtp"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#0000FF",
+    "flash_hz": 15,
+    "pit_limiter_color": "#0000FF",
+    "pit_limiter_flash": true,
+    "notes": "Green (left) → red (right) L→R; all change to blue and flash at optimum shift; RPM limit ~8,770; pit: shift lights and screen background turn blue"
+  },
+  {
+    "car_id": "ferrari 296 challenge",
+    "iracing_car_paths": ["ferrari296challenge"],
+    "pattern": "left_right",
+    "led_count": 10,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#00FF00",
+    "pit_limiter_flash": false,
+    "notes": "10 LEDs; green to red L→R; drivers upshift when all lights are red and flashing; pit limiter: all shift lights turn green, yellow PIT LIMITER banner on display"
+  },
+  {
+    "car_id": "mercedes-amg gt4",
+    "iracing_car_paths": ["mercedesamggt4"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FF0000",
+    "pit_limiter_flash": true,
+    "notes": "All flash red at ~6600 RPM; shift point varies slightly by selected gear"
+  },
+  {
+    "car_id": "mclaren 570s gt4",
+    "iracing_car_paths": ["mclaren570sgt4"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "All fully illuminated at 6800–7300 RPM depending on selected gear"
+  },
+  {
+    "car_id": "audi rs3 lms tcr",
+    "iracing_car_paths": ["audirs3lms"],
+    "pattern": "left_right",
+    "led_count": 8,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FF0000",
+    "pit_limiter_flash": true,
+    "notes": "8 LEDs on left and right of dash display; all fully illuminated = upshift; pit: LED 1 + LED 5 slow blinking red"
+  },
+  {
+    "car_id": "honda civic type r tcr",
+    "iracing_car_paths": ["hondacivictyper"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage1" },
+      { "leds": [5], "color": "stage1" },
+      { "leds": [6], "color": "stage1" },
+      { "leds": [7], "color": "stage2" },
+      { "leds": [8], "color": "stage2" },
+      { "leds": [9], "color": "stage2" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFFFF",
+    "pit_limiter_flash": true,
+    "notes": "Row of shift lights at top of dash; green fill then change to red and begin flashing at optimal shift RPM; pit limiter: shift lights alternate white/off"
+  },
+  {
+    "car_id": "bmw m4 g82 gt4 evo",
+    "iracing_car_paths": ["bmwm4evogt4"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage1" },
+      { "leds": [5], "color": "stage1" },
+      { "leds": [6], "color": "stage1" },
+      { "leds": [7], "color": "stage1" },
+      { "leds": [8], "color": "stage1" },
+      { "leds": [9], "color": "stage1" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FF0000",
+    "pit_limiter_flash": true,
+    "notes": "Shift lights illuminate fully in red; upshift when all red LEDs are on"
+  },
+  {
+    "car_id": "aston martin vantage gt4",
+    "iracing_car_paths": ["amvantagegt4"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FF0000",
+    "pit_limiter_flash": true,
+    "notes": "All shift lights fully illuminate at ~6750 RPM = upshift recommended"
+  },
+  {
+    "car_id": "aston martin vantage gt3 evo",
+    "iracing_car_paths": ["amvantageevogt3"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#00FF00",
+    "pit_limiter_flash": true,
+    "notes": "Exact shift RPM not documented in manual; pit limiter = green flash with side LEDs color-coded to speed"
+  },
+  {
+    "car_id": "porsche mission r",
+    "iracing_car_paths": ["porschemissionr"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Electric car with single-speed transmission; no traditional shift points; ABS indicator uses white strips outside→in on secondary display; generic pattern applied"
+  },
+  {
+    "car_id": "hyundai elantra n tc",
+    "iracing_car_paths": ["hyundaielantracn7"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Generic pattern; shift light behavior not detailed in manual"
+  },
+  {
+    "car_id": "hyundai veloster n tc",
+    "iracing_car_paths": ["hyundaivelostern"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Generic pattern; shift light behavior not detailed in manual"
+  },
+  {
+    "car_id": "ford mustang gt4",
+    "iracing_car_paths": ["fordmustanggt4"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Generic pattern; specific shift light data not documented"
+  }
+]
