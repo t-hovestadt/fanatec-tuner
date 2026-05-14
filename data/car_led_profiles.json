@@ -14712,45 +14712,432 @@
     "iracing_car_paths": [
       "stockcarschevycamarozl12022"
     ],
-    "pattern": "none",
-    "led_count": 0,
-    "colors": {},
-    "stages": [],
-    "flash_color": "#000000",
-    "flash_hz": 0,
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FF8000",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      {
+        "leds": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "color": "stage1"
+      },
+      {
+        "leds": [
+          6,
+          7
+        ],
+        "color": "stage2"
+      },
+      {
+        "leds": [
+          8,
+          9
+        ],
+        "color": "stage3"
+      }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Pit speed indicator is graphical tachometer overlay (yellow/green/red). NASCAR Cup Series Next Gen stock car."
+    "notes": "Source: Lovely Car Data (github.com/Lovely-Sim-Racing/lovely-car-data), CC BY-NC-SA 4.0. carId: nascar-chevrolet-camaro-nextgen. Non-standard format: len(ledColor)==ledNumber (no flash slot). Previously: pattern='none'.",
+    "gear_rpms": {
+      "R": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "N": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "1": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "2": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "3": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "4": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "5": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      }
+    }
   },
   {
     "car_id": "nascar cup series nextgen ford mustang",
     "iracing_car_paths": [
       "stockcarsfordmustang2022"
     ],
-    "pattern": "none",
-    "led_count": 0,
-    "colors": {},
-    "stages": [],
-    "flash_color": "#000000",
-    "flash_hz": 0,
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FF8000",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      {
+        "leds": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "color": "stage1"
+      },
+      {
+        "leds": [
+          6,
+          7
+        ],
+        "color": "stage2"
+      },
+      {
+        "leds": [
+          8,
+          9
+        ],
+        "color": "stage3"
+      }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Pit speed indicator is graphical tachometer overlay (yellow/green/red). NASCAR Cup Series Next Gen stock car."
+    "notes": "Source: Lovely Car Data (github.com/Lovely-Sim-Racing/lovely-car-data), CC BY-NC-SA 4.0. carId: nascar-ford-mustang-nextgen. Non-standard format: len(ledColor)==ledNumber (no flash slot). Previously: pattern='none'.",
+    "gear_rpms": {
+      "R": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "N": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "1": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "2": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "3": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "4": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "5": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      }
+    }
   },
   {
     "car_id": "nascar cup series nextgen toyota camry",
     "iracing_car_paths": [
       "stockcarstoyotacamry2022"
     ],
-    "pattern": "none",
-    "led_count": 0,
-    "colors": {},
-    "stages": [],
-    "flash_color": "#000000",
-    "flash_hz": 0,
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FF8000",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      {
+        "leds": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "color": "stage1"
+      },
+      {
+        "leds": [
+          6,
+          7
+        ],
+        "color": "stage2"
+      },
+      {
+        "leds": [
+          8,
+          9
+        ],
+        "color": "stage3"
+      }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Pit speed indicator is graphical tachometer overlay (yellow/green/red). NASCAR Cup Series Next Gen stock car."
+    "notes": "Source: Lovely Car Data (github.com/Lovely-Sim-Racing/lovely-car-data), CC BY-NC-SA 4.0. carId: nascar-toyota-camry-nextgen. Non-standard format: len(ledColor)==ledNumber (no flash slot). Previously: pattern='none'.",
+    "gear_rpms": {
+      "R": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "N": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "1": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "2": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "3": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "4": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      },
+      "5": {
+        "thresholds": [
+          7000.0,
+          7200.0,
+          7400.0,
+          7600.0,
+          7800.0,
+          8000.0,
+          8200.0,
+          8400.0,
+          8600.0
+        ],
+        "redline": 8600.0
+      }
+    }
   },
   {
     "car_id": "nascar cup series gen4",
@@ -14758,15 +15145,110 @@
       "stockcarschevymontecarlo03",
       "stockcarsfordtaurus03"
     ],
-    "pattern": "none",
-    "led_count": 0,
-    "colors": {},
-    "stages": [],
-    "flash_color": "#000000",
-    "flash_hz": 0,
+    "pattern": "left_right",
+    "led_count": 1,
+    "colors": {
+      "stage1": "#FFFF00"
+    },
+    "stages": [
+      {
+        "leds": [
+          5
+        ],
+        "color": "stage1"
+      }
+    ],
+    "flash_color": "#FFFF00",
+    "flash_hz": 15,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. NASCAR Cup Gen4 stock car."
+    "notes": "Source: Lovely Car Data (github.com/Lovely-Sim-Racing/lovely-car-data), CC BY-NC-SA 4.0. carId: nascar-chevrolet-montecarlo-gen4-2003. Non-standard format: len(ledColor)==ledNumber (no flash slot). Previously: pattern='none'.",
+    "gear_rpms": {
+      "R": {
+        "thresholds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          7700.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "redline": 7700.0
+      },
+      "N": {
+        "thresholds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          7700.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "redline": 7700.0
+      },
+      "1": {
+        "thresholds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          7700.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "redline": 7700.0
+      },
+      "2": {
+        "thresholds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          7700.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "redline": 7700.0
+      },
+      "3": {
+        "thresholds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          7700.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "redline": 7700.0
+      },
+      "4": {
+        "thresholds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          7700.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "redline": 7700.0
+      }
+    }
   },
   {
     "car_id": "nascar xfinity series",
@@ -14781,15 +15263,110 @@
       "stockcars2chevygen4cup",
       "stockcars2chevycot"
     ],
-    "pattern": "none",
-    "led_count": 0,
-    "colors": {},
-    "stages": [],
-    "flash_color": "#000000",
-    "flash_hz": 0,
+    "pattern": "left_right",
+    "led_count": 1,
+    "colors": {
+      "stage1": "#FF0000"
+    },
+    "stages": [
+      {
+        "leds": [
+          5
+        ],
+        "color": "stage1"
+      }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Spek Pro tachometer has pit speed lights (yellow/green/red for speed vs limit) and a shift light mode that turns the gauge backlight red near rev limiter. Neither system uses a Fanatec LED strip."
+    "notes": "Source: Lovely Car Data (github.com/Lovely-Sim-Racing/lovely-car-data), CC BY-NC-SA 4.0. carId: nascar-oreilly-chevrolet-camaro. Non-standard format: len(ledColor)==ledNumber (no flash slot). Previously: pattern='none'.",
+    "gear_rpms": {
+      "R": {
+        "thresholds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          8400.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "redline": 8400.0
+      },
+      "N": {
+        "thresholds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          8400.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "redline": 8400.0
+      },
+      "1": {
+        "thresholds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          8400.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "redline": 8400.0
+      },
+      "2": {
+        "thresholds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          8400.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "redline": 8400.0
+      },
+      "3": {
+        "thresholds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          8400.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "redline": 8400.0
+      },
+      "4": {
+        "thresholds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          8400.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "redline": 8400.0
+      }
+    }
   },
   {
     "car_id": "nascar craftsman truck series",
