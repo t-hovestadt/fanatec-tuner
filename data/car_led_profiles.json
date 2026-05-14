@@ -53,7 +53,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Pairs illuminate outside to center; flash red at shift point"
+    "notes": "Pairs illuminate outside to center, meeting in middle, then flash at 7400 rpm; pit limiter: yellow light beside indicator #6 flashes, right dash shows \"Pit Speed\" (1st gear only); source: iRacing Global Mazda MX-5 Cup user manual \u2014 confirmed outside_center"
   },
   {
     "car_id": "ford mustang gt3",
@@ -156,7 +156,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#0000FF",
     "pit_limiter_flash": true,
-    "notes": "8 LEDs on real car; center LED (5) not used; pairs fill outside-in; pit limiter color-coded to speed (blue/green/red)"
+    "notes": "8 LEDs outside\u2192inside pairs, all flash red at shift (~7500 rpm); pit limiter repurposes shift LEDs as speed indicator: blue=below limit, green=at limit, red=over limit; yellow LED flashes upper-right; lockup: inner-2 red=rear, outer-2 white=minor front, outer-2 blue=severe front; source: iRacing Gen3 Supercars user manual"
   },
   {
     "car_id": "porsche 963 gtp",
@@ -203,7 +203,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#00FF00",
     "pit_limiter_flash": true,
-    "notes": "Outside-in pairs, green outside to red inside; all flash blue at optimum shift point; pit limiter: green display overlay"
+    "notes": "Outside-in pairs, green outside \u2192 darker toward center; all change to blue at shift; flash blue at optimum shift point; source: iRacing Porsche 963 GTP user manual \u2014 blue flash confirmed"
   },
   {
     "car_id": "bmw m4 f82 gt4",
@@ -250,7 +250,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FF0000",
     "pit_limiter_flash": true,
-    "notes": "8 LEDs, illuminate from outer edges inward; in 3rd gear: 2 green@6450, 4 green@6600, 2 yellow@6750, 4 yellow@6900, all flash@7050; RPM shift point varies per gear"
+    "notes": "8 LEDs illuminate from outer edges inward; upshift when all fully illuminated; pit limiter: PSL indicator light illuminates + red banner at bottom of display; source: iRacing BMW M4 GT4 (F82) user manual"
   },
   {
     "car_id": "mclaren 720s gt3",
@@ -282,7 +282,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "All 9 LEDs illuminate blue simultaneously as shift approach; flash red at overrev; unique two-state pattern (off → all blue → flash red)"
+    "notes": "All 9 LEDs illuminate blue simultaneously as shift approach; flash red at overrev; unique two-state pattern (off \u2192 all blue \u2192 flash red)"
   },
   {
     "car_id": "mercedes-amg f1 w12 e",
@@ -353,23 +353,27 @@
     "iracing_car_paths": [
       "formulavee"
     ],
-    "pattern": "all_at_once",
-    "led_count": 5,
+    "pattern": "left_right",
+    "led_count": 3,
     "colors": {
       "stage1": "#FF0000"
     },
     "stages": [
       {
         "leds": [
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8,
-          9
+          4
+        ],
+        "color": "stage1"
+      },
+      {
+        "leds": [
+          5
+        ],
+        "color": "stage1"
+      },
+      {
+        "leds": [
+          6
         ],
         "color": "stage1"
       }
@@ -378,7 +382,7 @@
     "flash_hz": 15,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "5 red LEDs illuminate together at shift point; no green/yellow stages; all red pattern"
+    "notes": "3 red LEDs only: 6000 rpm / 6200 rpm / 6400 rpm; mapped to center LEDs 4-5-6; upshift at third (6400 rpm); source: iRacing Formula Vee user manual"
   },
   {
     "car_id": "fia f4",
@@ -451,7 +455,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#00FF00",
     "pit_limiter_flash": false,
-    "notes": "6 LEDs on real car (4 green + 2 red), mapped to 9; RPM thresholds: green 6300/6500/6600/6700, red 6800/6900, all flash 7000; pit limiter shows green box on display"
+    "notes": "7 active LEDs mapped to 9: 4 Green (6300/6500/6600/6700) + 2 Red (6800/6900) + All Flash at 7000; pit limiter: large green box at base of dash display; source: iRacing FIA F4 user manual \u2014 complete RPM table"
   },
   {
     "car_id": "bmw m4 gt3",
@@ -463,7 +467,8 @@
     "colors": {
       "stage1": "#00FF00",
       "stage2": "#FFFF00",
-      "stage3": "#FF0000"
+      "stage3": "#FFA500",
+      "stage4": "#FF0000"
     },
     "stages": [
       {
@@ -512,7 +517,7 @@
         "leds": [
           8
         ],
-        "color": "stage2"
+        "color": "stage3"
       },
       {
         "leds": [
@@ -525,7 +530,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FF00FF",
     "pit_limiter_flash": true,
-    "notes": "2 green + 6 yellow + 1 red sequential L→R; all flash red at shift; pit limiter = all magenta"
+    "notes": "11 LEDs mapped to 9: 2 Green (4800/5000) + 5 Yellow (5200-6200) + 2 Orange (6400/6600) + all Red flash at 6800; pit limiter = magenta flash; source: iRacing BMW M4 GT3 user manual"
   },
   {
     "car_id": "dallara ir18 indycar",
@@ -599,7 +604,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#0000FF",
     "pit_limiter_flash": true,
-    "notes": "10 LEDs on real car mapped to 9; green→yellow→red L→R then all turn blue and flash near 12,000 RPM redline; push-to-pass: inner status LEDs go green; pit: all shift lights flash blue, yellow display border"
+    "notes": "10 LEDs on real car mapped to 9; green\u2192yellow\u2192red L\u2192R then all turn blue and flash near 12,000 RPM redline; push-to-pass: inner status LEDs go green; pit: all shift lights flash blue, yellow display border"
   },
   {
     "car_id": "ferrari 296 gt3",
@@ -673,7 +678,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "L→R sequential, all red at shift; side LEDs: magenta = front brake lockup, cyan = rear lockup"
+    "notes": "L\u2192R sequential green\u2192yellow\u2192red; upshift when cluster fully illuminated (~8500 rpm); no explicit shift light table in manual \u2014 using default pattern; source: iRacing Ferrari 296 GT3 user manual"
   },
   {
     "car_id": "chevrolet corvette z06 gt3",
@@ -747,7 +752,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "L→R sequential; all red flash at shift point; all blue if pushed past redline into overrev zone"
+    "notes": "L\u2192R sequential; all red flash at shift point; all blue if pushed past redline into overrev zone"
   },
   {
     "car_id": "acura nsx gt3 evo 22",
@@ -821,7 +826,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "10 LEDs on real car mapped to 9; all turn red at shift point; L→R sequential fill"
+    "notes": "10 LEDs on real car mapped to 9; all turn red at shift point; L\u2192R sequential fill"
   },
   {
     "car_id": "mercedes-amg gt3 evo 2020",
@@ -895,7 +900,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "L→R sequential fill; all flash red at ~7025 RPM shift point"
+    "notes": "L\u2192R sequential fill; all flash red at ~7025 RPM shift point"
   },
   {
     "car_id": "toyota gr86",
@@ -1191,7 +1196,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "All flash blue at shift; updated 992.2 variant; per-gear shift points controlled by iRacing session YAML"
+    "notes": "All flash blue at shift; 8750 rpm limit; same cluster as 992.1 and 992 GT3 R family; source: iRacing Porsche 911 GT3 Cup (992.2) user manual \u2014 blue flash family"
   },
   {
     "car_id": "porsche 911 gt3 r 992",
@@ -1265,7 +1270,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Cluster fills L→R; all turn blue at optimum shift point"
+    "notes": "Shift light cluster over digital display; all LEDs turn blue at shift point; upshift when fully illuminated and all blue; flash blue; source: iRacing Porsche 911 GT3 R (992) user manual \u2014 blue flash confirmed"
   },
   {
     "car_id": "lamborghini huracan gt3 evo",
@@ -1339,7 +1344,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Sequential L→R fill; all turn blue at ~8000 RPM shift point"
+    "notes": "Sequential L\u2192R fill; all turn blue at ~8000 RPM shift point"
   },
   {
     "car_id": "porsche 718 cayman gt4",
@@ -1413,7 +1418,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Sequential L→R fill; all illuminated at 7500 RPM = shift point; side LEDs: yellow = front lockup pair, purple = rear wheelspin pair"
+    "notes": "Sequential L\u2192R fill; all illuminated at 7500 RPM = shift point; side LEDs: yellow = front lockup pair, purple = rear wheelspin pair"
   },
   {
     "car_id": "audi r8 lms evo ii gt3",
@@ -1487,7 +1492,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#0000FF",
     "pit_limiter_flash": true,
-    "notes": "10 LEDs on real car mapped to 9; upshift when final red light in sequence is illuminated; pit limiter: 6 LEDs blue"
+    "notes": "10 LEDs on real car mapped to 9 Fanatec; upshift when final red LED in sequence lit; pit limiter: 6 shift lights illuminate blue + speed overlay (green=below, red=over limit); source: iRacing Audi R8 LMS EVO II GT3 user manual"
   },
   {
     "car_id": "acura arx-06 gtp",
@@ -1561,7 +1566,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FF00FF",
     "pit_limiter_flash": true,
-    "notes": "Green (left) → red (right) L→R; all change to red and flash at optimum shift; RPM limit ~9,985; pit: shift lights and side clusters turn pink"
+    "notes": "Green \u2192 red L\u2192R; all change to red at shift point; no explicit shift light table in manual \u2014 using default; source: iRacing Acura ARX-06 GTP user manual"
   },
   {
     "car_id": "bmw m hybrid v8 gtp",
@@ -1635,7 +1640,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FF00FF",
     "pit_limiter_flash": true,
-    "notes": "Green (left) → red (right) L→R; all change to red and flash at optimum shift; RPM limit ~8,200; pit: magenta PSL box appears next to gear indicator"
+    "notes": "Green \u2192 red L\u2192R; all change to red at shift point; RPM limit 8200; wheelspin/lockup indicator clusters are separate dash LEDs; source: iRacing BMW M Hybrid V8 LMDh user manual"
   },
   {
     "car_id": "cadillac v-series.r gtp",
@@ -1705,11 +1710,11 @@
         "color": "stage3"
       }
     ],
-    "flash_color": "#0000FF",
+    "flash_color": "#FF0000",
     "flash_hz": 15,
     "pit_limiter_color": "#0000FF",
     "pit_limiter_flash": true,
-    "notes": "Green (left) → red (right) L→R; all change to blue and flash at optimum shift; RPM limit ~8,770; pit: shift lights and screen background turn blue"
+    "notes": "Green (left) \u2192 red (right) L\u2192R; all change to red and flash at shift point; wheelspin/brake-lockup indicator clusters are separate from shift LEDs; TC intervention: cluster lights all blue; source: iRacing Cadillac V-Series.R GTP user manual"
   },
   {
     "car_id": "ferrari 296 challenge",
@@ -1783,7 +1788,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#00FF00",
     "pit_limiter_flash": true,
-    "notes": "10 LEDs; green to red L→R; drivers upshift when all lights are red and flashing; pit limiter: all shift lights turn green, yellow PIT LIMITER banner on display"
+    "notes": "10 LEDs; green to red L\u2192R; drivers upshift when all lights are red and flashing; pit limiter: all shift lights turn green, yellow PIT LIMITER banner on display"
   },
   {
     "car_id": "mercedes-amg gt4",
@@ -1855,9 +1860,9 @@
     ],
     "flash_color": "#FF0000",
     "flash_hz": 15,
-    "pit_limiter_color": "#FF0000",
+    "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "All flash red at ~6600 RPM; shift point varies slightly by selected gear"
+    "notes": "All shift lights flash red at ~6600 rpm (varies slightly by gear); pit limiter: shift cluster flashes alternating blue and yellow + blue bar shows speed; source: iRacing Mercedes-AMG GT4 user manual"
   },
   {
     "car_id": "mclaren 570s gt4",
@@ -1931,7 +1936,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "All fully illuminated at 6800–7300 RPM depending on selected gear"
+    "notes": "All fully illuminated at 6800-7300 rpm (varies by gear); no explicit shift light table in manual \u2014 using default pattern; source: iRacing McLaren 570S GT4 user manual"
   },
   {
     "car_id": "audi rs3 lms tcr",
@@ -2005,7 +2010,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FF0000",
     "pit_limiter_flash": true,
-    "notes": "8 LEDs on left and right of dash display; all fully illuminated = upshift; pit: LED 1 + LED 5 slow blinking red"
+    "notes": "8 LEDs numbered individually (4 left + 4 right of display); all fully illuminated = upshift; pit limiter: LED 1 + LED 5 slow blink red; source: iRacing Audi RS 3 LMS TCR user manual"
   },
   {
     "car_id": "honda civic type r tcr",
@@ -2078,7 +2083,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFFFF",
     "pit_limiter_flash": true,
-    "notes": "Row of shift lights at top of dash; green fill then change to red and begin flashing at optimal shift RPM; pit limiter: shift lights alternate white/off"
+    "notes": "No dedicated shift light section in iRacing manual \u2014 using default pattern; 7000 rpm limit; tachometer displayed as curved bar on dash"
   },
   {
     "car_id": "bmw m4 g82 gt4 evo",
@@ -2088,7 +2093,9 @@
     "pattern": "left_right",
     "led_count": 9,
     "colors": {
-      "stage1": "#FF0000"
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
     },
     "stages": [
       {
@@ -2113,44 +2120,44 @@
         "leds": [
           4
         ],
-        "color": "stage1"
+        "color": "stage2"
       },
       {
         "leds": [
           5
         ],
-        "color": "stage1"
+        "color": "stage2"
       },
       {
         "leds": [
           6
         ],
-        "color": "stage1"
+        "color": "stage2"
       },
       {
         "leds": [
           7
         ],
-        "color": "stage1"
+        "color": "stage3"
       },
       {
         "leds": [
           8
         ],
-        "color": "stage1"
+        "color": "stage3"
       },
       {
         "leds": [
           9
         ],
-        "color": "stage1"
+        "color": "stage3"
       }
     ],
     "flash_color": "#FF0000",
     "flash_hz": 15,
     "pit_limiter_color": "#FF0000",
     "pit_limiter_flash": true,
-    "notes": "Shift lights illuminate fully in red; upshift when all red LEDs are on"
+    "notes": "Upshift when shift lights fully illuminated in red; green\u2192yellow\u2192red L\u2192R progression (direction not explicit in manual but standard BMW GT4); source: iRacing BMW M4 GT4 G82 user manual"
   },
   {
     "car_id": "aston martin vantage gt4",
@@ -2224,7 +2231,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FF0000",
     "pit_limiter_flash": true,
-    "notes": "All shift lights fully illuminate at ~6750 RPM = upshift recommended"
+    "notes": "All shift lights fully illuminated at ~6750 rpm = upshift; no explicit shift light table in manual \u2014 using default pattern; source: iRacing Aston Martin Vantage GT4 user manual"
   },
   {
     "car_id": "aston martin vantage gt3 evo",
@@ -2372,7 +2379,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Electric car with single-speed transmission; no traditional shift points; generic pattern applied"
+    "notes": "Electric car (single-speed); no shifting required during normal driving; these LEDs are not shift indicators \u2014 ABS lockup LEDs on sides of rear-view display; source: iRacing Porsche Mission R user manual"
   },
   {
     "car_id": "hyundai elantra n tc",
@@ -2446,7 +2453,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Generic pattern; shift light behavior not detailed in manual"
+    "notes": "No dedicated shift light section in iRacing manual \u2014 using default pattern; 7000 rpm limit; same TCR specification as Veloster N"
   },
   {
     "car_id": "hyundai veloster n tc",
@@ -2520,7 +2527,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Generic pattern; shift light behavior not detailed in manual"
+    "notes": "No dedicated shift light section in iRacing manual \u2014 using default pattern; 7000 rpm limit; same TCR specification as Elantra N"
   },
   {
     "car_id": "ford mustang gt4",
@@ -2594,7 +2601,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented in manual — using default"
+    "notes": "Shift light pattern not documented in manual \u2014 using default"
   },
   {
     "car_id": "bmw m8 gte",
@@ -2666,9 +2673,9 @@
     ],
     "flash_color": "#FF0000",
     "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_color": "#FF00FF",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented in manual — using default; note: bmwm8gte not found in CarsList_iRacing.xml, path unverified"
+    "notes": "Bosch DDU S2 dash; shift lights above display; upshift ~7000 rpm (just before rev-limit); pit limiter: all LEDs flash magenta + PSL box on dashboard; source: iRacing BMW M8 GTE user manual"
   },
   {
     "car_id": "dallara p217 lmp2",
@@ -2742,7 +2749,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented in manual — using default"
+    "notes": "No dedicated shift light cluster in iRacing manual \u2014 using default pattern; dash shows wheel lockup and TC activation lights but no RPM-based shift LEDs"
   },
   {
     "car_id": "ligier js p320",
@@ -2816,7 +2823,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented in manual — using default"
+    "notes": "Shift lights are acceleration-rate based (not fixed RPM threshold); optimum ~6600 rpm; iRacing SL values still drive the bar correctly; source: iRacing Ligier JS P320 user manual"
   },
   {
     "car_id": "dallara ir-01 indy pro 2000",
@@ -2890,7 +2897,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented in manual — using default"
+    "notes": "Upshift ~19200 rpm (limit 20000); pit limiter: screen turns blue + side lights flash; no shift light color sequence in manual \u2014 using default; source: iRacing Dallara IR-01 user manual"
   },
   {
     "car_id": "toyota sf23 super formula",
@@ -2965,7 +2972,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented in manual — using default"
+    "notes": "Upshift at ~9300 rpm; all fully illuminated = shift point; no dedicated shift light color sequence in manual \u2014 using default; source: iRacing Super Formula SF23 user manual"
   },
   {
     "car_id": "super formula lights",
@@ -3039,7 +3046,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented in manual — using default"
+    "notes": "Upshift at ~7000 rpm; all fully illuminated = shift point; no dedicated shift light color sequence in manual \u2014 using default; source: iRacing Super Formula Lights user manual"
   },
   {
     "car_id": "fia cross car",
@@ -3047,25 +3054,13 @@
       "crosscartn11"
     ],
     "pattern": "left_right",
-    "led_count": 9,
+    "led_count": 5,
     "colors": {
       "stage1": "#00FF00",
       "stage2": "#FFFF00",
       "stage3": "#FF0000"
     },
     "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
       {
         "leds": [
           3
@@ -3076,7 +3071,7 @@
         "leds": [
           4
         ],
-        "color": "stage2"
+        "color": "stage1"
       },
       {
         "leds": [
@@ -3095,25 +3090,13 @@
           7
         ],
         "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
       }
     ],
     "flash_color": "#FF0000",
     "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented in manual — using default"
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "5 LEDs left to right (AIM MXm dash above display); upshift when all 5 lit; mapped to Fanatec positions 3-7; RPM limit 12165; source: iRacing FIA Cross Car user manual"
   },
   {
     "car_id": "aston martin dbr9 gt1",
@@ -3187,7 +3170,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "GT1 prototype; shift light pattern not documented — using default"
+    "notes": "GT1 prototype; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "audi r18",
@@ -3261,7 +3244,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "LMP1 prototype; shift light pattern not documented — using default"
+    "notes": "LMP1 prototype; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "audi r8 lms gt3 (legacy)",
@@ -3335,7 +3318,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] shift light pattern not documented — using default"
+    "notes": "[Legacy] shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "audi 90 gto",
@@ -3409,7 +3392,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Vintage GTO; shift light pattern not documented — using default"
+    "notes": "Vintage GTO; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "bmw z4 gt3 (legacy)",
@@ -3483,7 +3466,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] shift light pattern not documented — using default"
+    "notes": "[Legacy] shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "chevrolet corvette c6.r gt1",
@@ -3557,7 +3540,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "GT1 car; shift light pattern not documented — using default"
+    "notes": "GT1 car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "chevrolet corvette c7 daytona prototype",
@@ -3631,7 +3614,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Prototype; shift light pattern not documented — using default"
+    "notes": "Prototype; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "chevrolet corvette c8.r gte",
@@ -3705,7 +3688,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "GTE car; shift light pattern not documented — using default"
+    "notes": "GTE car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "cadillac cts-v racecar",
@@ -3779,7 +3762,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "dallara f3",
@@ -3853,7 +3836,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Formula 3; shift light pattern not documented — using default"
+    "notes": "Formula 3; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "dallara dw12 (legacy)",
@@ -3927,7 +3910,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] IndyCar; shift light pattern not documented — using default"
+    "notes": "[Legacy] IndyCar; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "dallara il-15",
@@ -4001,7 +3984,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Indy Lights; shift light pattern not documented — using default"
+    "notes": "Indy Lights; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "dallara ir-05 (legacy)",
@@ -4075,7 +4058,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] IndyCar; shift light pattern not documented — using default"
+    "notes": "[Legacy] IndyCar; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ferrari 488 gt3 (legacy)",
@@ -4149,7 +4132,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] shift light pattern not documented — using default"
+    "notes": "[Legacy] shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ferrari 488 gte",
@@ -4223,7 +4206,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "GTE car; shift light pattern not documented — using default"
+    "notes": "GTE car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ferrari 499p gtp",
@@ -4297,7 +4280,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "LMH GTP prototype; shift light pattern not documented — using default"
+    "notes": "LMH GTP prototype; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ferrari 488 gt3 evo 2020",
@@ -4371,7 +4354,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ford gt gt2",
@@ -4445,7 +4428,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "GT2 car; shift light pattern not documented — using default"
+    "notes": "GT2 car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ford gt gte",
@@ -4519,7 +4502,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "GTE car; shift light pattern not documented — using default"
+    "notes": "GTE car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ford gt gt3",
@@ -4593,7 +4576,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "GT3 car; shift light pattern not documented — using default"
+    "notes": "GT3 car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "v8 supercar ford falcon 2009 (legacy)",
@@ -4667,7 +4650,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] V8 Supercars; shift light pattern not documented — using default"
+    "notes": "[Legacy] V8 Supercars; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ford fiesta rs wrc",
@@ -4741,7 +4724,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Rally car; shift light pattern not documented — using default"
+    "notes": "Rally car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "pro mazda (legacy)",
@@ -4815,7 +4798,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] open-wheel; shift light pattern not documented — using default"
+    "notes": "[Legacy] open-wheel; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "formula renault 2.0",
@@ -4889,7 +4872,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "formula renault 3.5",
@@ -4963,7 +4946,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ford mustang fr500s",
@@ -5037,7 +5020,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "hpd arx-01c",
@@ -5111,7 +5094,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "LMP2 prototype; shift light pattern not documented — using default"
+    "notes": "LMP2 prototype; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "indy pro 2000 pm-18",
@@ -5185,7 +5168,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "vw jetta tdi cup",
@@ -5259,7 +5242,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "kia optima",
@@ -5333,7 +5316,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "TCR-style car; shift light pattern not documented — using default"
+    "notes": "TCR-style car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "lotus 49",
@@ -5407,7 +5390,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Vintage Formula 1; shift light pattern not documented — using default"
+    "notes": "Vintage Formula 1; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "lotus 79",
@@ -5481,7 +5464,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Vintage Formula 1; shift light pattern not documented — using default"
+    "notes": "Vintage Formula 1; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "mclaren mp4-12c gt3 (legacy)",
@@ -5555,7 +5538,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] shift light pattern not documented — using default"
+    "notes": "[Legacy] shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "mclaren mp4-30 f1",
@@ -5629,7 +5612,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Formula 1 car; shift light pattern not documented — using default"
+    "notes": "Formula 1 car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "mercedes-amg gt3 (legacy)",
@@ -5703,7 +5686,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] shift light pattern not documented — using default"
+    "notes": "[Legacy] shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "nissan gtp zx-t",
@@ -5777,7 +5760,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Vintage GTP prototype; shift light pattern not documented — using default"
+    "notes": "Vintage GTP prototype; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "porsche 911 gt3 cup 991 (legacy)",
@@ -5851,7 +5834,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] 991 Cup; shift light pattern not documented — using default"
+    "notes": "[Legacy] 991 Cup; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "porsche 911 gt3 r (legacy)",
@@ -5925,7 +5908,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] GT3 R; shift light pattern not documented — using default"
+    "notes": "[Legacy] GT3 R; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "porsche 919 hybrid",
@@ -5999,7 +5982,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "LMP1 prototype; shift light pattern not documented — using default"
+    "notes": "LMP1 prototype; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "porsche 911 rsr",
@@ -6073,7 +6056,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "GTE car; shift light pattern not documented — using default"
+    "notes": "GTE car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "radical sr10",
@@ -6147,7 +6130,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "radical sr8",
@@ -6221,7 +6204,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ray ff1600",
@@ -6295,7 +6278,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Formula Ford; shift light pattern not documented — using default"
+    "notes": "Formula Ford; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "renault clio cup",
@@ -6369,7 +6352,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "riley mkxx daytona prototype (legacy)",
@@ -6443,7 +6426,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] prototype; shift light pattern not documented — using default"
+    "notes": "[Legacy] prototype; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "skip barber formula 2000",
@@ -6517,7 +6500,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ruf rt 12r awd",
@@ -6591,7 +6574,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ruf rt 12r rwd",
@@ -6665,7 +6648,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ruf rt 12r track",
@@ -6739,7 +6722,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "ruf rt 12r c-spec",
@@ -6813,7 +6796,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "pontiac solstice",
@@ -6887,7 +6870,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Production-based car; shift light pattern not documented — using default"
+    "notes": "Production-based car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "pontiac solstice rookie",
@@ -6961,7 +6944,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Production-based car; shift light pattern not documented — using default"
+    "notes": "Production-based car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "scca spec racer ford",
@@ -7035,7 +7018,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "stock car brasil toyota corolla",
@@ -7109,7 +7092,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Brazilian Stock Car touring series; shift light pattern not documented — using default"
+    "notes": "Brazilian Stock Car touring series; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "stock car brasil chevrolet cruze",
@@ -7183,7 +7166,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Brazilian Stock Car touring series; shift light pattern not documented — using default"
+    "notes": "Brazilian Stock Car touring series; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "subaru wrx sti",
@@ -7257,7 +7240,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Rally car; shift light pattern not documented — using default"
+    "notes": "Rally car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "usf 2000",
@@ -7331,7 +7314,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "notes": "Shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "v8 supercar ford falcon 2014 (legacy)",
@@ -7405,7 +7388,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] V8 Supercars; shift light pattern not documented — using default"
+    "notes": "[Legacy] V8 Supercars; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "v8 supercar holden 2014 (legacy)",
@@ -7479,7 +7462,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "[Legacy] V8 Supercars; shift light pattern not documented — using default"
+    "notes": "[Legacy] V8 Supercars; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "supercars holden zb commodore",
@@ -7553,7 +7536,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "V8 Supercars Holden; shift light pattern not documented — using default"
+    "notes": "V8 Supercars Holden; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "vw beetle grc",
@@ -7627,7 +7610,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Rallycross car; shift light pattern not documented — using default"
+    "notes": "Rallycross car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "vw beetle grc lite",
@@ -7701,7 +7684,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Rallycross car; shift light pattern not documented — using default"
+    "notes": "Rallycross car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "williams-toyota fw31",
@@ -7775,7 +7758,7 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Formula 1 car; shift light pattern not documented — using default"
+    "notes": "Formula 1 car; shift light pattern not documented \u2014 using default"
   },
   {
     "car_id": "nascar cup series nextgen chevrolet camaro",
@@ -8320,6 +8303,6 @@
     "flash_hz": 15,
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
-    "notes": "Generic fallback: green→yellow→red L→R, flash red — most common pattern across the iRacing car list"
+    "notes": "Generic fallback: green\u2192yellow\u2192red L\u2192R, flash red \u2014 most common pattern across the iRacing car list"
   }
 ]
