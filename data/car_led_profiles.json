@@ -904,5 +904,467 @@
     "pit_limiter_color": "#FFFF00",
     "pit_limiter_flash": true,
     "notes": "Generic pattern; specific shift light data not documented"
+  },
+  {
+    "car_id": "mercedes-amg f1 w12 e",
+    "iracing_car_paths": ["mercedesamgw12"],
+    "pattern": "all_at_once",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#0000FF"
+    },
+    "stages": [
+      { "leds": [1, 2, 3, 4, 5, 6, 7, 8, 9], "color": "stage1" }
+    ],
+    "flash_color": "#0000FF",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "All LEDs illuminate blue simultaneously at shift point; characteristic all_at_once pattern"
+  },
+  {
+    "car_id": "mercedes-amg f1 w13 e",
+    "iracing_car_paths": ["mercedesamgw13"],
+    "pattern": "all_at_once",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#0000FF"
+    },
+    "stages": [
+      { "leds": [1, 2, 3, 4, 5, 6, 7, 8, 9], "color": "stage1" }
+    ],
+    "flash_color": "#0000FF",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "All LEDs illuminate blue simultaneously at shift point; characteristic all_at_once pattern"
+  },
+  {
+    "car_id": "formula vee",
+    "iracing_car_paths": ["formulavee"],
+    "pattern": "all_at_once",
+    "led_count": 5,
+    "colors": {
+      "stage1": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1, 2, 3, 4, 5, 6, 7, 8, 9], "color": "stage1" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "5 red LEDs illuminate together at shift point; no green/yellow stages; all red pattern"
+  },
+  {
+    "car_id": "bmw m8 gte",
+    "iracing_car_paths": ["bmwm8gte"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Shift light pattern not documented in manual — using default green→yellow→red L→R"
+  },
+  {
+    "car_id": "dallara p217 lmp2",
+    "iracing_car_paths": ["dallarap217"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Shift light pattern not documented in manual — using default green→yellow→red L→R"
+  },
+  {
+    "car_id": "ligier js p320",
+    "iracing_car_paths": ["ligierp320"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Shift light pattern not documented in manual — using default green→yellow→red L→R"
+  },
+  {
+    "car_id": "dallara ir-01 indy pro 2000",
+    "iracing_car_paths": ["ir01"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Shift light pattern not documented in manual — using default green→yellow→red L→R"
+  },
+  {
+    "car_id": "toyota sf23 super formula",
+    "iracing_car_paths": ["toyotasf23"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Shift light pattern not documented in manual — using default green→yellow→red L→R"
+  },
+  {
+    "car_id": "super formula lights",
+    "iracing_car_paths": ["sflights"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Shift light pattern not documented in manual — using default green→yellow→red L→R"
+  },
+  {
+    "car_id": "fia cross car",
+    "iracing_car_paths": ["crosscar"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Shift light pattern not documented in manual — using default green→yellow→red L→R"
+  },
+  {
+    "car_id": "nascar nextgen chevrolet camaro",
+    "iracing_car_paths": ["nextgenchevycamaro"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; stock car oval racing"
+  },
+  {
+    "car_id": "nascar nextgen ford mustang",
+    "iracing_car_paths": ["nextgenfordmustang"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; stock car oval racing"
+  },
+  {
+    "car_id": "nascar nextgen toyota camry",
+    "iracing_car_paths": ["nextgentoyotacamry"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; stock car oval racing"
+  },
+  {
+    "car_id": "nascar cup series gen4",
+    "iracing_car_paths": ["stockcar2003", "nwt2003"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; stock car oval racing"
+  },
+  {
+    "car_id": "nascar xfinity series",
+    "iracing_car_paths": ["xfinity", "nascarkiaoptima"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; stock car oval racing"
+  },
+  {
+    "car_id": "nascar craftsman truck series",
+    "iracing_car_paths": ["tundra", "nascartruck"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; stock car oval racing"
+  },
+  {
+    "car_id": "arca menards chevrolet camaro",
+    "iracing_car_paths": ["arcachevycamaro"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; stock car oval racing"
+  },
+  {
+    "car_id": "srx series",
+    "iracing_car_paths": ["srxcar"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; oval racing"
+  },
+  {
+    "car_id": "legends car",
+    "iracing_car_paths": ["legends"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; oval racing"
+  },
+  {
+    "car_id": "late model stock car",
+    "iracing_car_paths": ["latemodel"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; oval racing"
+  },
+  {
+    "car_id": "street stock",
+    "iracing_car_paths": ["streetstock"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; oval racing"
+  },
+  {
+    "car_id": "mini stock",
+    "iracing_car_paths": ["ministock"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; oval racing"
+  },
+  {
+    "car_id": "ne dirt modified",
+    "iracing_car_paths": ["modifiedtour"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; dirt oval racing"
+  },
+  {
+    "car_id": "dirt micro sprint car",
+    "iracing_car_paths": ["dirtmicrosprint"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; dirt oval racing"
+  },
+  {
+    "car_id": "dirt mini stock",
+    "iracing_car_paths": ["dirtministock"],
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "No wheel-mounted shift light LEDs; dirt oval racing"
+  },
+  {
+    "car_id": "_default",
+    "iracing_car_paths": ["__default__"],
+    "pattern": "left_right",
+    "led_count": 9,
+    "colors": {
+      "stage1": "#00FF00",
+      "stage2": "#FFFF00",
+      "stage3": "#FF0000"
+    },
+    "stages": [
+      { "leds": [1], "color": "stage1" },
+      { "leds": [2], "color": "stage1" },
+      { "leds": [3], "color": "stage1" },
+      { "leds": [4], "color": "stage2" },
+      { "leds": [5], "color": "stage2" },
+      { "leds": [6], "color": "stage2" },
+      { "leds": [7], "color": "stage3" },
+      { "leds": [8], "color": "stage3" },
+      { "leds": [9], "color": "stage3" }
+    ],
+    "flash_color": "#FF0000",
+    "flash_hz": 15,
+    "pit_limiter_color": "#FFFF00",
+    "pit_limiter_flash": true,
+    "notes": "Generic fallback: green→yellow→red L→R, flash red — most common pattern across the iRacing car list"
   }
 ]
