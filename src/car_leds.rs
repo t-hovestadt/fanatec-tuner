@@ -88,65 +88,23 @@ pub fn find_led_profile<'a>(
     })
 }
 
-/// Generic fallback profile used when no car-specific entry is found.
+/// Fallback profile used when no car-specific entry is found.
 ///
-/// Green → Yellow → Red sequential left-to-right, flash red — the most
-/// common pattern across the iRacing car list.
+/// Returns a "none" pattern profile — no LED commands are sent for unknown cars.
+/// Only cars with verified LED data (sourced from Lovely Car Data) get LED output.
 pub fn default_led_profile() -> CarLedProfile {
-    let mut colors = HashMap::new();
-    colors.insert("stage1".to_string(), "#00FF00".to_string());
-    colors.insert("stage2".to_string(), "#FFFF00".to_string());
-    colors.insert("stage3".to_string(), "#FF0000".to_string());
-
     CarLedProfile {
         car_id: "_default".to_string(),
         iracing_car_paths: Vec::new(),
-        pattern: "left_right".to_string(),
-        led_count: 9,
-        colors,
-        stages: vec![
-            LedStage {
-                leds: vec![1],
-                color: "stage1".to_string(),
-            },
-            LedStage {
-                leds: vec![2],
-                color: "stage1".to_string(),
-            },
-            LedStage {
-                leds: vec![3],
-                color: "stage1".to_string(),
-            },
-            LedStage {
-                leds: vec![4],
-                color: "stage2".to_string(),
-            },
-            LedStage {
-                leds: vec![5],
-                color: "stage2".to_string(),
-            },
-            LedStage {
-                leds: vec![6],
-                color: "stage2".to_string(),
-            },
-            LedStage {
-                leds: vec![7],
-                color: "stage3".to_string(),
-            },
-            LedStage {
-                leds: vec![8],
-                color: "stage3".to_string(),
-            },
-            LedStage {
-                leds: vec![9],
-                color: "stage3".to_string(),
-            },
-        ],
-        flash_color: "#FF0000".to_string(),
-        flash_hz: 15,
-        pit_limiter_color: Some("#FFFF00".to_string()),
-        pit_limiter_flash: Some(true),
+        pattern: "none".to_string(),
+        led_count: 0,
+        colors: HashMap::new(),
+        stages: Vec::new(),
+        flash_color: "#000000".to_string(),
+        flash_hz: 0,
+        pit_limiter_color: None,
+        pit_limiter_flash: None,
         gear_rpms: None,
-        notes: Some("Generic fallback: green→yellow→red L→R, flash red".to_string()),
+        notes: Some("No verified LED data — tuning only".to_string()),
     }
 }

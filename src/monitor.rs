@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use crate::car_leds;
 use crate::carlist;
 use crate::config;
 use crate::games::{self, CarDetected};
@@ -13,7 +14,9 @@ use crate::tuning;
 /// Commands sent from the monitor thread to the LED thread.
 enum LedCmd {
     /// A new car was detected; apply its profile and start animating.
-    CarChanged(Box<PwsProfile>),
+    /// The second field is the iRacing `carPath` (used to look up the
+    /// LED profile from `car_led_profiles.json`). `None` for non-iRacing games.
+    CarChanged(Box<PwsProfile>, Option<String>),
     /// The game exited; clear LEDs and stop animating.
     GameExited,
 }
@@ -151,7 +154,12 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
                         } else {
                             println!("applying {}", prof.path.display());
                         }
-                        led_tx.send(LedCmd::CarChanged(Box::new(prof.clone()))).ok();
+                        led_tx
+                            .send(LedCmd::CarChanged(
+                                Box::new(prof.clone()),
+                                detected.car_path.clone(),
+                            ))
+                            .ok();
                     }
                 }
             }
@@ -182,6 +190,10 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
 fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver<LedCmd>) {
     let frame = Duration::from_millis(33); // ≈30 Hz
 
+    // Load car LED profiles once — embedded in the binary via include_str!.
+    // Used to decide whether to send LED commands for a given car.
+    let car_led_profiles = car_leds::load_car_led_profiles();
+
     // Persistent handles — reopen col03 on write failure.
     let mut col03 = hid::open_device_by_path(&col03_path).ok();
     let col01 = col01_path
@@ -208,24 +220,42 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
         // ── 1. Drain command channel (non-blocking) ───────────────────────────
         loop {
             match rx.try_recv() {
-                Ok(LedCmd::CarChanged(prof)) => {
-                    // Apply tuning + static LED config.
+                Ok(LedCmd::CarChanged(prof, car_path)) => {
+                    // Determine whether this car has verified LED data.
+                    // Only cars imported from Lovely Car Data (gear_rpms present,
+                    // pattern != "none") get LED commands — everything else is
+                    // tuning only.
+                    let has_verified_leds = car_path
+                        .as_deref()
+                        .and_then(|cp| car_leds::find_led_profile(&car_led_profiles, cp))
+                        .map(|p| p.pattern != "none")
+                        .unwrap_or(false);
+
+                    // Apply tuning always; LED config only when verified.
                     if let Some(ref d) = col03 {
                         match crate::apply_write(d, col01.as_ref(), &prof) {
                             Some(_) => {}
                             None => eprintln!("  applied (unverified)"),
                         }
-                        send_led_config(d, &prof);
-                    }
-                    // Extract animation palette from profile.
-                    if let Some(ref rev) = prof.rev_led {
-                        for (i, &ci) in rev.colors.iter().take(9).enumerate() {
-                            palette[i] = led::color_index_to_rgb565(ci);
+                        if has_verified_leds {
+                            send_led_config(d, &prof);
+                        } else {
+                            println!("  [led] no verified LED data — tuning only");
                         }
-                        rpm_thresholds = rev.rpm_thresholds.clone();
-                        flash_threshold = rev.flash_threshold;
-                        flash_period_ms = rev.flash_period_ms.max(50);
-                        active = true;
+                    }
+                    // Extract animation palette from profile (only for verified cars).
+                    if has_verified_leds {
+                        if let Some(ref rev) = prof.rev_led {
+                            for (i, &ci) in rev.colors.iter().take(9).enumerate() {
+                                palette[i] = led::color_index_to_rgb565(ci);
+                            }
+                            rpm_thresholds = rev.rpm_thresholds.clone();
+                            flash_threshold = rev.flash_threshold;
+                            flash_period_ms = rev.flash_period_ms.max(50);
+                            active = true;
+                        } else {
+                            active = false;
+                        }
                     } else {
                         active = false;
                     }

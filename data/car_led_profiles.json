@@ -1446,36 +1446,15 @@
     "iracing_car_paths": [
       "formulavee"
     ],
-    "pattern": "left_right",
-    "led_count": 3,
-    "colors": {
-      "stage1": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage1"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "3 red LEDs only: 6000 rpm / 6200 rpm / 6400 rpm; mapped to center LEDs 4-5-6; upshift at third (6400 rpm); source: iRacing Formula Vee user manual"
+    "notes": "3 red LEDs only: 6000 rpm / 6200 rpm / 6400 rpm; mapped to center LEDs 4-5-6; upshift at third (6400 rpm); source: iRacing Formula Vee user manual | No verified LED data — tuning only"
   },
   {
     "car_id": "fia f4",
@@ -6048,74 +6027,15 @@
     "iracing_car_paths": [
       "porschemissionr"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Electric car (single-speed); no shifting required during normal driving; these LEDs are not shift indicators — ABS lockup LEDs on sides of rear-view display; source: iRacing Porsche Mission R user manual"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Electric car (single-speed); no shifting required during normal driving; these LEDs are not shift indicators — ABS lockup LEDs on sides of rear-view display; source: iRacing Porsche Mission R user manual | No verified LED data — tuning only"
   },
   {
     "car_id": "hyundai elantra n tc",
@@ -7722,124 +7642,30 @@
     "iracing_car_paths": [
       "crosscartn11"
     ],
-    "pattern": "left_right",
-    "led_count": 5,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "5 LEDs left to right (AIM MXm dash above display); upshift when all 5 lit; mapped to Fanatec positions 3-7; RPM limit 12165; source: iRacing FIA Cross Car user manual"
+    "notes": "5 LEDs left to right (AIM MXm dash above display); upshift when all 5 lit; mapped to Fanatec positions 3-7; RPM limit 12165; source: iRacing FIA Cross Car user manual | No verified LED data — tuning only"
   },
   {
     "car_id": "aston martin dbr9 gt1",
     "iracing_car_paths": [
       "astonmartindbr9"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "GT1 prototype; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "GT1 prototype; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "audi r18",
@@ -8032,370 +7858,75 @@
     "iracing_car_paths": [
       "audir8gt3"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "[Legacy] shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "[Legacy] shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "audi 90 gto",
     "iracing_car_paths": [
       "audi90gto"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Vintage GTO; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Vintage GTO; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "bmw z4 gt3 (legacy)",
     "iracing_car_paths": [
       "bmwz4gt3"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "[Legacy] shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "[Legacy] shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "chevrolet corvette c6.r gt1",
     "iracing_car_paths": [
       "c6r"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "GT1 car; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "GT1 car; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "chevrolet corvette c7 daytona prototype",
     "iracing_car_paths": [
       "c7vettedp"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Prototype; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Prototype; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "chevrolet corvette c8.r gte",
@@ -9280,148 +8811,30 @@
     "iracing_car_paths": [
       "dallara"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "[Legacy] IndyCar; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "[Legacy] IndyCar; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "ferrari 488 gt3 (legacy)",
     "iracing_car_paths": [
       "ferrari488gt3"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "[Legacy] shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "[Legacy] shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "ferrari 488 gte",
@@ -9786,148 +9199,30 @@
     "iracing_car_paths": [
       "ferrarievogt3"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "ford gt gt2",
     "iracing_car_paths": [
       "fordgt"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "GT2 car; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "GT2 car; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "ford gt gte",
@@ -10129,296 +9424,60 @@
     "iracing_car_paths": [
       "fordgtgt3"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "GT3 car; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "GT3 car; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "v8 supercar ford falcon 2009 (legacy)",
     "iracing_car_paths": [
       "fordv8sc"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "[Legacy] V8 Supercars; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "[Legacy] V8 Supercars; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "ford fiesta rs wrc",
     "iracing_car_paths": [
       "fordfiestarswrc"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Rally car; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Rally car; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "pro mazda (legacy)",
     "iracing_car_paths": [
       "formulamazda"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "[Legacy] open-wheel; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "[Legacy] open-wheel; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "formula renault 2.0",
@@ -10773,74 +9832,15 @@
     "iracing_car_paths": [
       "fr500s"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "hpd arx-01c",
@@ -11005,370 +10005,75 @@
     "iracing_car_paths": [
       "indypropm18"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "vw jetta tdi cup",
     "iracing_car_paths": [
       "jettatdi"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "kia optima",
     "iracing_car_paths": [
       "kiaoptima"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "TCR-style car; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "TCR-style car; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "lotus 49",
     "iracing_car_paths": [
       "lotus49"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Vintage Formula 1; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Vintage Formula 1; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "lotus 79",
     "iracing_car_paths": [
       "lotus79"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Vintage Formula 1; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Vintage Formula 1; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "mclaren mp4-12c gt3 (legacy)",
@@ -11561,370 +10266,75 @@
     "iracing_car_paths": [
       "mclarenmp430"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Formula 1 car; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Formula 1 car; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "mercedes-amg gt3 (legacy)",
     "iracing_car_paths": [
       "mercedesamggt3"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "[Legacy] shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "[Legacy] shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "nissan gtp zx-t",
     "iracing_car_paths": [
       "nissangtpzxt"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Vintage GTP prototype; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Vintage GTP prototype; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "porsche 911 gt3 cup 991 (legacy)",
     "iracing_car_paths": [
       "porsche911cup"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "[Legacy] 991 Cup; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "[Legacy] 991 Cup; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "porsche 911 gt3 r (legacy)",
     "iracing_car_paths": [
       "porsche911rgt3"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "[Legacy] GT3 R; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "[Legacy] GT3 R; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "porsche 919 hybrid",
@@ -13082,592 +11492,120 @@
     "iracing_car_paths": [
       "rileydp"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "[Legacy] prototype; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "[Legacy] prototype; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "skip barber formula 2000",
     "iracing_car_paths": [
       "rt2000"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "ruf rt 12r awd",
     "iracing_car_paths": [
       "rufrt12rawd"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "ruf rt 12r rwd",
     "iracing_car_paths": [
       "rufrt12rrwd"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "ruf rt 12r track",
     "iracing_car_paths": [
       "rufrt12rtrack"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "ruf rt 12r c-spec",
     "iracing_car_paths": [
       "rufrt12rtrackcspec"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "pontiac solstice",
     "iracing_car_paths": [
       "solstice"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Production-based car; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Production-based car; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "pontiac solstice rookie",
     "iracing_car_paths": [
       "solsticerookie"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Production-based car; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Production-based car; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "scca spec racer ford",
@@ -13860,222 +11798,45 @@
     "iracing_car_paths": [
       "stockcarbrasilcorolla"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Brazilian Stock Car touring series; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Brazilian Stock Car touring series; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "stock car brasil chevrolet cruze",
     "iracing_car_paths": [
       "stockcarbrasilcruze"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Brazilian Stock Car touring series; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Brazilian Stock Car touring series; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "subaru wrx sti",
     "iracing_car_paths": [
       "subaruwrxsti"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Rally car; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Rally car; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "usf 2000",
@@ -14268,444 +12029,90 @@
     "iracing_car_paths": [
       "v8supercarsford2014"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "[Legacy] V8 Supercars; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "[Legacy] V8 Supercars; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "v8 supercar holden 2014 (legacy)",
     "iracing_car_paths": [
       "v8supercarsholden2014"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "[Legacy] V8 Supercars; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "[Legacy] V8 Supercars; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "supercars holden zb commodore",
     "iracing_car_paths": [
       "v8supercarsholden2019"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "V8 Supercars Holden; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "V8 Supercars Holden; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "vw beetle grc",
     "iracing_car_paths": [
       "vwbeetlegrc"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Rallycross car; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Rallycross car; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "vw beetle grc lite",
     "iracing_car_paths": [
       "vwbeetlegrclite"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Rallycross car; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Rallycross car; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "williams-toyota fw31",
     "iracing_car_paths": [
       "williamsfw31"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Formula 1 car; shift light pattern not documented — using default"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Formula 1 car; shift light pattern not documented — using default | No verified LED data — tuning only"
   },
   {
     "car_id": "nascar cup series nextgen chevrolet camaro",
@@ -15384,7 +12791,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Spek Pro tachometer pit speed indicator only (yellow=below, green=at, red=above limit). NASCAR Craftsman Truck Series."
+    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Spek Pro tachometer pit speed indicator only (yellow=below, green=at, red=above limit). NASCAR Craftsman Truck Series. | No verified LED data — tuning only"
   },
   {
     "car_id": "arca menards series",
@@ -15401,7 +12808,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. ARCA Menards Series stock car — no shift light section in manual."
+    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. ARCA Menards Series stock car — no shift light section in manual. | No verified LED data — tuning only"
   },
   {
     "car_id": "srx series",
@@ -15416,7 +12823,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual (all 18 pages): no shift light LEDs. Holley EFI digital display only; H-pattern transmission. SRX Series oval racing."
+    "notes": "Confirmed from v2 manual (all 18 pages): no shift light LEDs. Holley EFI digital display only; H-pattern transmission. SRX Series oval racing. | No verified LED data — tuning only"
   },
   {
     "car_id": "legends car",
@@ -15433,7 +12840,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LED strip. AIM digital display has dashboard shift lights (L→R green to red, red LED in upper right at optimum RPM) but this is an in-game dash indicator, not the Fanatec strip."
+    "notes": "Confirmed from v2 manual: no steering wheel shift LED strip. AIM digital display has dashboard shift lights (L→R green to red, red LED in upper right at optimum RPM) but this is an in-game dash indicator, not the Fanatec strip. | No verified LED data — tuning only"
   },
   {
     "car_id": "late model stock car",
@@ -15448,7 +12855,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Oval racing."
+    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Oval racing. | No verified LED data — tuning only"
   },
   {
     "car_id": "street stock",
@@ -15463,7 +12870,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Oval racing."
+    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Oval racing. | No verified LED data — tuning only"
   },
   {
     "car_id": "mini stock",
@@ -15478,7 +12885,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Oval racing."
+    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Oval racing. | No verified LED data — tuning only"
   },
   {
     "car_id": "ne dirt modified / sk modified",
@@ -15497,7 +12904,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual (big_block_modified.pdf): no steering wheel shift LEDs. Dirt oval modified racing."
+    "notes": "Confirmed from v2 manual (big_block_modified.pdf): no steering wheel shift LEDs. Dirt oval modified racing. | No verified LED data — tuning only"
   },
   {
     "car_id": "dirt micro sprint car",
@@ -15513,7 +12920,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LED section found. Dirt micro sprint oval racing."
+    "notes": "Confirmed from v2 manual: no steering wheel shift LED section found. Dirt micro sprint oval racing. | No verified LED data — tuning only"
   },
   {
     "car_id": "dirt mini stock",
@@ -15528,7 +12935,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Dirt oval racing."
+    "notes": "Confirmed from v2 manual: no steering wheel shift LEDs. Dirt oval racing. | No verified LED data — tuning only"
   },
   {
     "car_id": "nascar cup series 2018-2019 legacy",
@@ -15545,7 +12952,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; NASCAR Cup legacy stock car"
+    "notes": "No wheel-mounted shift light LEDs; NASCAR Cup legacy stock car | No verified LED data — tuning only"
   },
   {
     "car_id": "nascar cup series legacy (pre-2018)",
@@ -15562,7 +12969,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; NASCAR Cup legacy stock car"
+    "notes": "No wheel-mounted shift light LEDs; NASCAR Cup legacy stock car | No verified LED data — tuning only"
   },
   {
     "car_id": "nascar cup series 1987 classics",
@@ -15580,7 +12987,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; NASCAR Cup 1987 classic stock car"
+    "notes": "No wheel-mounted shift light LEDs; NASCAR Cup 1987 classic stock car | No verified LED data — tuning only"
   },
   {
     "car_id": "dirt late model",
@@ -15597,7 +13004,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; dirt oval late model racing"
+    "notes": "No wheel-mounted shift light LEDs; dirt oval late model racing | No verified LED data — tuning only"
   },
   {
     "car_id": "dirt midget",
@@ -15612,7 +13019,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; dirt oval midget racing"
+    "notes": "No wheel-mounted shift light LEDs; dirt oval midget racing | No verified LED data — tuning only"
   },
   {
     "car_id": "dirt sprint car winged",
@@ -15629,7 +13036,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; dirt oval sprint car racing"
+    "notes": "No wheel-mounted shift light LEDs; dirt oval sprint car racing | No verified LED data — tuning only"
   },
   {
     "car_id": "dirt sprint car non-winged",
@@ -15645,7 +13052,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; dirt oval sprint car racing"
+    "notes": "No wheel-mounted shift light LEDs; dirt oval sprint car racing | No verified LED data — tuning only"
   },
   {
     "car_id": "dirt street stock",
@@ -15660,7 +13067,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; dirt oval racing"
+    "notes": "No wheel-mounted shift light LEDs; dirt oval racing | No verified LED data — tuning only"
   },
   {
     "car_id": "late model stock car 2023",
@@ -15675,7 +13082,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; oval racing"
+    "notes": "No wheel-mounted shift light LEDs; oval racing | No verified LED data — tuning only"
   },
   {
     "car_id": "super late model",
@@ -15690,7 +13097,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; oval racing"
+    "notes": "No wheel-mounted shift light LEDs; oval racing | No verified LED data — tuning only"
   },
   {
     "car_id": "street stock variants",
@@ -15706,7 +13113,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; oval racing"
+    "notes": "No wheel-mounted shift light LEDs; oval racing | No verified LED data — tuning only"
   },
   {
     "car_id": "silver crown car",
@@ -15721,7 +13128,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; USAC Silver Crown oval racing"
+    "notes": "No wheel-mounted shift light LEDs; USAC Silver Crown oval racing | No verified LED data — tuning only"
   },
   {
     "car_id": "sprint car",
@@ -15736,7 +13143,7 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; open-wheel oval sprint car racing"
+    "notes": "No wheel-mounted shift light LEDs; open-wheel oval sprint car racing | No verified LED data — tuning only"
   },
   {
     "car_id": "lucas oil pro truck",
@@ -15753,81 +13160,22 @@
     "flash_hz": 0,
     "pit_limiter_color": null,
     "pit_limiter_flash": null,
-    "notes": "No wheel-mounted shift light LEDs; off-road truck racing"
+    "notes": "No wheel-mounted shift light LEDs; off-road truck racing | No verified LED data — tuning only"
   },
   {
     "car_id": "_default",
     "iracing_car_paths": [
       "__default__"
     ],
-    "pattern": "left_right",
-    "led_count": 9,
-    "colors": {
-      "stage1": "#00FF00",
-      "stage2": "#FFFF00",
-      "stage3": "#FF0000"
-    },
-    "stages": [
-      {
-        "leds": [
-          1
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          2
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          3
-        ],
-        "color": "stage1"
-      },
-      {
-        "leds": [
-          4
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          5
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          6
-        ],
-        "color": "stage2"
-      },
-      {
-        "leds": [
-          7
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          8
-        ],
-        "color": "stage3"
-      },
-      {
-        "leds": [
-          9
-        ],
-        "color": "stage3"
-      }
-    ],
-    "flash_color": "#FF0000",
-    "flash_hz": 15,
-    "pit_limiter_color": "#FFFF00",
-    "pit_limiter_flash": true,
-    "notes": "Generic fallback: green→yellow→red L→R, flash red — most common pattern across the iRacing car list"
+    "pattern": "none",
+    "led_count": 0,
+    "colors": {},
+    "stages": [],
+    "flash_color": "#000000",
+    "flash_hz": 0,
+    "pit_limiter_color": null,
+    "pit_limiter_flash": null,
+    "notes": "Generic fallback: green→yellow→red L→R, flash red — most common pattern across the iRacing car list | No verified LED data — tuning only"
   },
   {
     "car_id": "audi rs3 lms gen2",
