@@ -12781,7 +12781,8 @@
       "truckssilverado2019",
       "trucksfordf150",
       "truckstoyotatundra2022",
-      "truckssilverado"
+      "truckssilverado",
+      "trucksram2026"
     ],
     "pattern": "none",
     "led_count": 0,
@@ -13164,9 +13165,7 @@
   },
   {
     "car_id": "_default",
-    "iracing_car_paths": [
-      "__default__"
-    ],
+    "iracing_car_paths": [],
     "pattern": "none",
     "led_count": 0,
     "colors": {},

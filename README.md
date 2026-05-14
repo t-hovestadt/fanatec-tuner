@@ -121,9 +121,17 @@ tuning and LED settings for iRacing, AC, and ACC. Download V2.01.63 from the
 Fanatec forum:
 https://forum.fanatec.com/topic/990-fanalab-share-your-favorite-profiles/
 
-**Fanatec App export** — open the Fanatec App → Game Profile Management →
-select a profile → export as `.pws`. Note: the built-in recommended profiles
-only contain tuning parameters, not LED color settings.
+**Fanatec App recommended profiles** — the Fanatec App maps every iRacing car
+to one generic profile (`Recommended FFB Settings - CS DD+ (iR).pws`, FF=89
+for iRacing). There is no per-car tuning from Fanatec themselves.
+fanatec-tuner can apply this fallback automatically when no per-car `.pws` is
+found. Per-car tuning requires Maurice's FanaLab profiles (see above).
+
+**LED Profiles** — per-car shift light patterns (colors, fill direction,
+per-gear RPM thresholds) come from
+[Lovely Car Data](https://github.com/Lovely-Sim-Racing/lovely-car-data).
+70 iRacing cars have verified LED data. Cars without verified LED data receive
+tuning only — no LED commands are sent.
 
 **XML car lists** — copy two files from the Fanatec App installation into your
 profiles folder:
