@@ -1,338 +1,626 @@
-# Fanatec HID Tuning Protocol
+# Fanatec HID Protocol Reference
 
-Reference for the HID output-report / interrupt-in-report protocol used by
-Fanatec steering wheel bases. Derived from the open-source
-[hid-fanatecff](https://github.com/gotzl/hid-fanatecff) Linux kernel driver.
-
----
-
-## Device identification
-
-| Device | Vendor ID | Product ID |
-|---|---|---|
-| ClubSport Wheelbase V2 | 0x0EB7 | 0x0001 |
-| ClubSport Wheelbase V2.5 | 0x0EB7 | 0x0004 |
-| CSL Elite (PC, red LED) | 0x0EB7 | 0x0E03 |
-| CSL Elite PS4 (PC mode) | 0x0EB7 | 0x0005 |
-| Podium DD1 | 0x0EB7 | 0x0006 |
-| Podium DD2 | 0x0EB7 | 0x0007 |
-| CSL DD / CSL DD Pro | 0x0EB7 | 0x0020 |
-| **ClubSport DD+** (2024) | 0x0EB7 | **0x0020** |
-| CSR Elite | 0x0EB7 | 0x0011 |
-| Porsche 911 Turbo S | 0x0EB7 | 0x0197 |
-
-The ClubSport DD+ shares PID 0x0020 with the CSL DD — confirmed from hardware.
-
-All tuning-capable bases share the same report format; device capabilities
-differ only in which parameters are populated (see Parameter table).
+Technical reference for the USB HID protocol used by Fanatec DD-series wheel bases.
+Derived from reverse-engineering: [hid-fanatecff](https://github.com/gotzl/hid-fanatecff)
+Linux kernel driver, FanaBridge SimHub plugin (C#), and direct hardware verification on a
+ClubSport DD+ (PID 0x0020).
 
 ---
 
-## Report format
+## Overview
 
-Every tuning-related message is exactly **64 bytes**.
+The Fanatec wheel base exposes multiple USB HID collections under vendor ID `0x0EB7`.
+On the ClubSport DD+ (and CSL DD), Windows enumerates three collections:
 
-```
-Byte 0:  0xFF  — report ID
-Byte 1:  0x03  — tuning marker (distinguishes tuning reports from other HID traffic)
-Byte 2:  command / flags
-Byte 3:  slot or additional argument (command-dependent)
-Bytes 4–63:  parameter data and padding
-```
+| Collection | Role | Report size |
+|-----------|------|-------------|
+| `col01` | Display, ACK bursts, wheel input | 8 bytes |
+| `col02` | (Firmware-dependent; typically unused) | — |
+| `col03` | Tuning writes/reads, LED control, hardware status, protobuf config | 64 bytes |
 
-The device's interrupt IN reports follow the same layout when responding
-to a values-request command.
+**col03** is the primary channel for all sim-racing integrations. It handles:
+- Tuning parameter reads and writes (`FF 03`)
+- Rev, flag, and button LED colors (`FF 01`)
+- Hardware status queries (`FF 08`)
+- Protobuf config reporting (`FF 10`)
 
----
+**col01** is written to for the ACK burst after each tuning write, and for 7-segment
+display updates. It also delivers wheel input (steering angle, button state) as interrupt
+IN reports.
 
-## Commands (byte 2)
+All reports on col03 are exactly **64 bytes**. Reports on col01 are exactly **8 bytes**.
 
-| Byte 2 | Purpose | Byte 3 |
-|---|---|---|
-| `0x00` | Write all parameters | 0x01 (devId; must not be 0x81) |
-| `0x01` | Select tuning slot | slot number (1–5) |
-| `0x02` | Request current tuning values (READ) | 0x00 |
-| `0x03` | Save tuning to flash | 0x00 |
-| `0x04` | **Factory reset** — restores device to factory defaults | 0x00 |
-| `0x06` | Toggle advanced mode | 0x00 |
-
-**Warning:** `0x04` is a destructive factory reset, not a read command. Always use `0x02` to request tuning values.
-
-**Sending:** use `WriteFile` on the device handle (HID output report).
-Do **not** use `HidD_SetFeature` — the driver uses `hid_hw_output_report`,
-which maps to a HID OUTPUT report type, not a FEATURE report.
-
-**Receiving:** use `ReadFile` on the same handle (HID interrupt IN report).
-The device echoes tuning values whenever the host sends command 0x04 or
-the user adjusts a knob on the base.
+Finding the correct collection: enumerate all `0x0EB7` device paths, attempt `WriteFile`
+on each, accept the one that does not return `ERROR_INVALID_FUNCTION`. On the CS DD+
+this is always `col03`. Cache the result — no need to re-probe on subsequent writes.
 
 ---
 
-## Parameter byte addresses
+## Tuning Parameters — `FF 03`
 
-Addresses are the wire byte index within the 64-byte **read response**.
-
-**Write direction offset:** in the write format every parameter sits at
-`addr + 1`. This is because byte 2 carries the CMD_WRITE_PARAM command
-(0x00), shifting all parameters one position to the right.
+### Report Structure
 
 ```
-Read response:  [0xFF][0x03][SLOT][SEN][FF][SHO]...
-Write command:  [0xFF][0x03][0x00][SLOT][SEN][FF][SHO]...
-                              ↑ cmd
+col03, 64 bytes:
+  byte[0] = 0xFF   report ID
+  byte[1] = 0x03   tuning marker
+  byte[2] = cmd    see Commands table below
+  byte[3] = arg    command-dependent
+  bytes[4..63]     parameter data / padding
 ```
 
-The driver stores received reports at `ftec_tuning_data[1..]` (shifted by
-one) precisely so the retained buffer can be used directly as the write
-buffer. Confirmed: `hid-ftecff-tuning.c:85`
-```c
-drv_data->tuning.ftec_tuning_data[addr + 1] = val;
+### Commands (byte[2])
+
+| Value | Purpose | byte[3] |
+|-------|---------|---------|
+| `0x00` | **Write** all tuning parameters | `0x01` (devId — must not be `0x81`) |
+| `0x01` | Select tuning slot | slot 1–5 |
+| `0x02` | **Read** current tuning values | `0x00` |
+| `0x03` | **Save** current state to firmware flash | `0x00` |
+| `0x04` | Factory reset (destructive — do not use) | `0x00` |
+| `0x06` | Toggle advanced/writable mode | `0x00` |
+
+The `0x06` toggle is required before every read and write (see Wake Sequence).
+
+**devId** for byte[3] of write: `0x01` = wheel base, `0x02` = Podium Button Module
+(BMR/BME). Always force this to `0x01`; the read response returns `0x01` or `0x81`
+depending on toggle state — if `0x81` is copied verbatim into the write buffer, the
+write is silently ignored. This is the single most common failure mode.
+
+### Read/Write Offset Convention
+
+Parameters in the **read response** occupy byte addresses starting at offset 2.
+In the **write buffer**, each parameter sits at `read_offset + 1` because byte[2]
+holds the CMD byte, pushing everything right by one:
+
+```
+Read response:  [FF][03][SLOT][SEN][FF][SHO]...   (slot at byte 2)
+Write command:  [FF][03][00][SLOT][SEN][FF][SHO]... (cmd=0x00 at byte 2, slot at byte 3)
 ```
 
-Conversions:
+`FanaBridge.BuildWriteBuffer()` copies `readBuf[2..63] → writeBuf[3..64]` exactly.
+fanatec-tuner does the same in `build_full_write_report()`.
+
+### Parameter Byte Addresses (read offsets)
+
+Values apply to the read response. For wire encoding:
 - **noop** — display value = wire byte (no scaling)
-- **×10** — display value = wire byte × 10 (wire stores 0–10 or 0–12)
-- **sens** — SEN encoding (see below)
-- **signed** — interpret wire byte as int8
+- **×10** — display value = wire byte × 10
+- **sens** — SEN special encoding (see SEN section)
+- **signed** — interpret as int8
 
-| Name | Byte | Display range | Conv | Notes |
-|---|---|---|---|---|
+| Name | Read byte | Display range | Encoding | Notes |
+|------|-----------|--------------|---------|-------|
 | SLOT | 0x02 | 1–5 | noop | Active tuning slot |
 | SEN | 0x03 | 90–2520° / AUTO | sens | Steering rotation angle |
 | FF | 0x04 | 0–100 | noop | Force feedback strength |
 | SHO | 0x05 | 0–100 | ×10 | Wheel vibration motor |
 | BLI | 0x06 | 0–100 / OFF | noop | Brake Level Indicator; 101 = OFF |
-| FFS | 0x07 | 0–1 | noop | FF scaling: 0 = LINEAR, 1 = PEAK |
+| FFS | 0x07 | 0–1 | noop | FF scaling: 0=LINEAR, 1=PEAK |
 | DRI | 0x09 | −5 to 3 | signed | Drift mode; CSL Elite only |
 | FOR | 0x0A | 0–120 | ×10 | Force effect strength |
 | SPR | 0x0B | 0–120 | ×10 | Spring effect strength |
 | DPR | 0x0C | 0–120 | ×10 | Damper effect strength |
 | NDP | 0x0D | 0–100 | noop | Natural Damping; DD+/DD1/DD2 only |
 | NFR | 0x0E | 0–100 | noop | Natural Friction; DD+/DD1/DD2 only |
-| BRF | 0x10 | 0–100 | noop | Brake force (load-cell) |
+| BRF | 0x10 | 0–100 | noop | Brake force (load cell) |
 | FEI | 0x11 | 0–100 | noop | Force effect intensity |
 | ACP | 0x13 | 1–4 | noop | Analogue Paddles mode |
 | INT | 0x14 | 0–20 | noop | FFB interpolation filter; DD+/DD1/DD2 only |
 | NIN | 0x15 | 0–100 | noop | Natural Inertia; DD+/DD1/DD2 only |
 | FUL | 0x16 | 0–100 | noop | FullForce; CSL DD only |
 
----
+### SEN Encoding
 
-## SEN encoding
+SEN encodes steering angle. Two schemes depending on max rotation range:
 
-The SEN byte encodes steering angle. The encoding depends on the base's
-maximum supported rotation range.
-
-**Bases with max rotation ≤ 1090° (CSL Elite, CS V2/V2.5):**
+**Bases with max ≤ 1090° (CSL Elite, CS V2/V2.5):**
 ```
-degrees = wire_byte × 10
+degrees = wire_byte × 10       (range 0x09–0x6C → 90°–1080°)
 ```
-Range: wire 0x09–0x6C → 90°–1080°.
 
-**Bases with max rotation > 1090° (CSL DD, DD Pro, DD+, DD1, DD2):**
+**Bases with max > 1090° (CS DD, DD Pro, DD+, DD1, DD2):**
 
 Three sub-ranges packed into one byte:
 
 | Wire byte | Degrees | Formula |
-|---|---|---|
-| 0x8A – 0xEC | 90° – 1070° | `90 + 10 × (byte − 0x8A)` |
-| 0xED – 0xFF | 1080° – 1260° | `1080 + 10 × (byte − 0xED)` |
-| 0x00 – 0x89 | 1270° – 2640° | `1080 + 10 × (256 + byte − 0xED)` |
+|-----------|---------|---------|
+| 0x8A–0xEC | 90°–1070° | `90 + 10 × (byte − 0x8A)` |
+| 0xED–0xFF | 1080°–1260° | `1080 + 10 × (byte − 0xED)` |
+| 0x00–0x89 | 1270°–2640° | `1080 + 10 × (256 + byte − 0xED)` |
 
-`0x00` may also appear as **AUTO** (base chooses range from attached wheel).
+`0x00` may also appear as **AUTO** — the base selects range from the attached wheel.
+The host must know `max_range` to choose the correct formula.
 
-The host must know the base's `max_range` to distinguish the small-range
-formula (`byte × 10`) from the large-range lookup. In the Linux driver,
-`max_range` is queried from a separate HID descriptor field during probe.
+### Wake Sequence (Required Before Every Read or Write)
+
+The device starts in an unknown toggle state relative to a new process. CMD `0x06`
+is a toggle — each call flips the current mode. It must precede reads and writes.
+
+```
+[0xFF, 0x03, 0x06, 0x00 × 61]   64-byte wake report
+```
+
+**For reads (startup probe) — double-toggle with probe:**
+1. Send `0x06` + wait 500 ms + send `0x02` (read request)
+2. If response arrives → advanced mode is ON; proceed
+3. If no response within 1000 ms → mode was already ON and is now OFF; send `0x06` again,
+   wait 500 ms, send `0x02` → this always succeeds
+
+**For writes — one unconditional toggle immediately before each write:**
+The toggle opens a one-shot write window. Sending `0x00` without a preceding toggle
+results in no change. Do not reuse the window across multiple writes.
+
+```
+1. WriteFile: [FF 03 06 00...] — toggle
+2. Sleep 500 ms
+3. WriteFile: [FF 03 00 01 ...params...] — write all params at once
+```
+
+**FWPnpService dependency:** reads fail if the Fanatec driver service is not running.
+The `FWPnpService` is installed with the Fanatec driver; do not stop it.
+
+**Drain stale input before reads** (`DRAIN_TIMEOUT_MS = 50`): loop `ReadFile` with
+50 ms timeout until timeout fires, discarding any stale reports buffered since the
+last operation.
+
+### Typical Read Flow
+
+```
+1. Open device (GENERIC_READ|GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE, overlapped)
+2. WriteFile [FF 03 06 00...] — toggle
+3. Sleep 500 ms
+4. Drain: loop ReadFile(50ms) until timeout
+5. WriteFile [FF 03 02 00...] — read request
+6. ReadFile(64 bytes, WaitForSingleObject 200ms)
+7. If buf[0]≠FF or buf[1]≠03: discard and loop to 6 (other HID traffic may arrive)
+8. Decode parameters from buf[2..]
+```
+
+### Typical Write Flow
+
+Build one 64-byte buffer, overlay the desired parameters, send once. The DD+ requires
+all parameters in a single report — one-at-a-time writes do not work.
+
+```
+1. Read current values → snapshot
+2. buf[0]=0xFF, buf[1]=0x03, buf[2]=0x00 (CMD_WRITE)
+3. Copy snapshot[2..62] → buf[3..63]
+4. Force buf[3]=0x01 (devId — never copy 0x81)
+5. Overlay each changed param at buf[read_offset + 1]
+6. WriteFile: write_buf
+7. WriteFile on col01: ACK burst (see below)
+8. (optional verify) toggle+drain+read+compare
+```
 
 ---
 
-## Opening the device on Windows
+## Rev LED Colors — `FF 01 00`
+
+```
+col03, 64 bytes:
+  buf[0] = 0xFF
+  buf[1] = 0x01
+  buf[2] = 0x00   SUBCMD_REV
+  buf[3..4]  = LED 1 RGB565 big-endian (high byte at buf[3])
+  buf[5..6]  = LED 2
+  ...
+  buf[19..20] = LED 9
+  buf[21..63] = 0x00
+```
+
+**9 LEDs**, numbered 1–9 left-to-right on the strip. Each color is 2 bytes,
+big-endian RGB565 (see RGB565 Encoding below). A value of `0x0000` is off.
+
+Send at 30 Hz during active driving. Use dirty-check — skip the write when colors
+have not changed since the last frame.
+
+**CSL Elite incompatibility:** The `F8 13` bitmask protocol from hid-fanatecff is
+for CSL Elite only (PID 0x0E03/0x0005). The DD+ (0x0020) does not have the
+`FTEC_WHEELBASE_LEDS` quirk and does not respond to `F8 13`. Use `FF 01 00` only.
+
+---
+
+## Flag LED Colors — `FF 01 01`
+
+```
+col03, 64 bytes:
+  buf[0] = 0xFF
+  buf[1] = 0x01
+  buf[2] = 0x01   SUBCMD_FLAG
+  buf[3..4]  = Flag LED 1 RGB565 big-endian
+  buf[5..6]  = Flag LED 2
+  ...
+  buf[13..14] = Flag LED 6
+  buf[15..63] = 0x00
+```
+
+**6 LEDs**. Typically reflect race flag state (yellow, green, red, blue, checkered).
+
+---
+
+## Button LED Colors — `FF 01 02`
+
+```
+col03, 64 bytes:
+  buf[0] = 0xFF
+  buf[1] = 0x01
+  buf[2] = 0x02   SUBCMD_BTN_COLORS
+  buf[3..4]  = Button 1 RGB565 big-endian
+  ...
+  buf[27..28] would be Button 13 — but buf[27] is the commit byte
+  buf[27] = commit: 0x00=stage, 0x01=apply immediately
+  buf[28..63] = 0x00
+```
+
+**12 buttons**, RGB565 per button. Commit byte at offset 27 (HEADER=3 + 12 × 2 = 27).
+
+**Two-phase commit:** send colors with `commit=0x00` first, then intensities with
+`commit=0x01`. This makes colors and intensities take effect atomically in one visible
+update. If only intensities change, the intensity report can be sent directly with
+`commit=0x01`.
+
+---
+
+## Button LED Intensity — `FF 01 03`
+
+```
+col03, 64 bytes:
+  buf[0] = 0xFF
+  buf[1] = 0x01
+  buf[2] = 0x03   SUBCMD_BTN_INTENSITIES
+  buf[3..17] = 15 × intensity (0–7, 3-bit each)
+  buf[18] = commit: 0x00=stage, 0x01=apply
+  buf[19..63] = 0x00
+```
+
+Up to 16 intensity bytes; commit byte at offset 18 (HEADER=3 + 15 = 18). Values
+are 3-bit (0=off, 7=max). Encoder knobs (hwIndex 12–14 on PSWBMW) also use this
+payload at their respective hwIndex positions.
+
+**Podium Button Module Rally (PHUB_PBMR):** uses RGB555 instead of RGB565 for
+button colors. Green is quantized to 5 bits (`g >> 3`) and the MSB of the 6-bit
+green field is always zero. The `colorFormat` field in wheel JSON profiles signals
+this variant.
+
+---
+
+## Save — `FF 03 03`
+
+```
+col03, 64 bytes:
+  buf[0] = 0xFF
+  buf[1] = 0x03
+  buf[2] = 0x03   CMD_SAVE
+  buf[3..63] = 0x00
+```
+
+Persists the current LED configuration (color palette, button colors/brightness) to
+firmware flash. Send after each LED config write. Without this, the config reverts
+on power cycle.
+
+---
+
+## Display — `col01`
+
+The 3-digit 7-segment display uses 8-byte reports on col01.
+
+```
+col01, 8 bytes:
+  buf[0] = 0x01   Report ID (Windows requires this as first byte)
+  buf[1] = 0xF8
+  buf[2] = 0x09
+  buf[3] = 0x01
+  buf[4] = 0x02
+  buf[5] = seg1   left digit
+  buf[6] = seg2   center digit
+  buf[7] = seg3   right digit
+```
+
+**7-segment bit encoding:**
+
+```
+    seg0  ───
+seg5 |     | seg1
+    seg6  ───
+seg4 |     | seg2
+    seg3  ───     (seg7 = decimal point)
+```
+
+| Byte value | Character |
+|-----------|-----------|
+| `0x00` | Blank |
+| `0x3F` | 0 |
+| `0x06` | 1 |
+| `0x5B` | 2 |
+| `0x4F` | 3 |
+| `0x66` | 4 |
+| `0x6D` | 5 |
+| `0x7D` | 6 |
+| `0x07` | 7 |
+| `0x7F` | 8 |
+| `0x6F` | 9 |
+| `0x40` | `-` (dash) |
+| `0x80` | `.` (dot) |
+| `0x50` | `r` (reverse) |
+| `0x54` | `n` (neutral) |
+
+All three digit positions are always sent; use `0x00` for blank positions.
+
+Linux `hid-fanatecff` sends the same payload without the leading `0x01` Report ID
+byte because sysfs strips it; Windows HID requires the Report ID as byte[0].
+
+---
+
+## ACK Burst — col01
+
+After every successful tuning write on col03, send **4 ON/OFF pulse pairs** on col01.
+This matches FanaBridge behavior and improves write reliability.
+
+```
+ON:  [0x01, 0xF8, 0x09, 0x01, 0x06, 0xFF, 0x02, 0x00]
+OFF: [0x01, 0xF8, 0x09, 0x01, 0x06, 0x00, 0x00, 0x00]
+
+Pattern: ON → 1ms → OFF → 1ms, repeated 4 times (8 total packets)
+```
+
+`ACK_BURST_COUNT = 4`, `ACK_BURST_DELAY_MS = 1`. Byte[4] = `0x06` is the ACK
+subcmd constant (`COL01_TUNING_ACK` in FanaBridge).
+
+If col01 cannot be opened, skip the burst — tuning writes still succeed without it.
+
+---
+
+## Hardware Status — `FF 08`
+
+```
+col03:
+  buf[0] = 0xFF
+  buf[1] = 0x08
+  buf[2] = 0x0C   BaseType (0x0C = 12 = ClubSport DD+)
+  ...
+```
+
+`FF 08` reports arrive periodically as interrupt IN reports and also in response to
+certain queries. This is a fixed binary format (not protobuf). BaseType 12 (`0x0C`)
+identifies the CS DD+.
+
+---
+
+## Protobuf Config — `FF 10`
+
+```
+col03:
+  buf[0] = 0xFF
+  buf[1] = 0x10
+  buf[2] = length   total protobuf payload length
+  buf[3..N] = protobuf payload
+  buf[N+1..] = trailer bytes
+```
+
+Three variants observed by length:
+
+| Length | Context |
+|--------|---------|
+| `0x0E` (14) | Startup / idle state report |
+| `0x16` (22) | Active gameplay — contains current tuning values |
+| `0x1C` (28) | Extended status (e.g., after advanced-mode toggle) |
+
+The `FF 10 0x16` variant carries the current tuning state in protobuf encoding.
+It is sent periodically (~every 14 seconds) as a status heartbeat from the base.
+`sniff --decode` formats decoded fields as `[f1=N  f2=M*  f3=P]` where `*`
+marks fields that changed from the previous report.
+
+---
+
+## RGB565 Encoding
+
+All modern DD-series LED reports use BGR565 ("RGB565" by Fanatec convention):
+- Bits 15–11: Blue (5 bits)
+- Bits 10–5: Green (6 bits)
+- Bits 4–0: Red (5 bits)
+
+Packed **big-endian** (high byte first) in the HID report:
+
+```rust
+// Rust (fanatec-tuner led.rs):
+fn rgb_to_rgb565(r: u8, g: u8, b: u8) -> u16 {
+    let r5 = (r >> 3) as u16 & 0x1F;
+    let g6 = (g >> 2) as u16 & 0x3F;
+    let b5 = (b >> 3) as u16 & 0x1F;
+    (b5 << 11) | (g6 << 5) | r5
+}
+
+// Packing into report buffer:
+buf[offset]   = (color >> 8) as u8;   // high byte first
+buf[offset+1] = (color & 0xFF) as u8;
+```
+
+```csharp
+// C# (FanaBridge ColorHelper — byte-for-byte identical):
+ushort r5 = (ushort)((r >> 3) & 0x1F);
+ushort g6 = (ushort)((g >> 2) & 0x3F);
+ushort b5 = (ushort)((b >> 3) & 0x1F);
+return (ushort)((b5 << 11) | (g6 << 5) | r5);
+```
+
+**Common color values:**
+
+| Color | RGB | RGB565 (u16) | Bytes |
+|-------|-----|--------------|-------|
+| Red | 255,0,0 | 0x001F | `00 1F` |
+| Green | 0,255,0 | 0x07E0 | `07 E0` |
+| Blue | 0,0,255 | 0xF800 | `F8 00` |
+| Yellow | 255,255,0 | 0x07FF | `07 FF` |
+| Orange | 255,165,0 | 0x0517 | `05 17` |
+| Magenta | 255,0,255 | 0xF81F | `F8 1F` |
+| White | 255,255,255 | 0xFFFF | `FF FF` |
+| Off | 0,0,0 | 0x0000 | `00 00` |
+
+**RGB555 variant (Podium Button Module Rally):** Green is reduced to 5 bits
+(`g >> 3`) and the MSB of the 6-bit green field is always zero. This is only
+needed for the PHUB_PBMR button module's `FF 01 02` color reports.
+
+---
+
+## Legacy LED Protocols (col01 only — NOT for DD+)
+
+These protocols target CSL Elite rims via col01. They are **not supported** by
+the DD+ (PID 0x0020). Listed for completeness only.
+
+| byte[4] | Protocol | Target wheels |
+|---------|---------|---------------|
+| `0x02` | `[01 F8 09 02 enable 00 00 00]` — GlobalEnable | All legacy rims |
+| `0x06` | `[01 F8 09 06 !enable 00 00 00]` — RevStripeEnable (inverted) | RevStripe wheels |
+| `0x08` | `[01 F8 09 08 data_lo data_hi 00 00]` — bitmask or RGB333 | BMW M3 GT2, Porsche 918 |
+| `0x0A` | `[01 F8 09 0A d0 d1 d2 d3]` — per-LED 3-bit color | GT DD PRO |
+| `0x0B` | `[01 F8 09 0B d0 d1 d2 d3]` — per-LED 3-bit flag | (same wheels as 0x0A) |
+
+**RevStripe** (CSLESWP1X, CSLESWP1PS4, CSLESWWRC): Single RGB333 color for entire
+strip via subcmd 0x08 after 0x06 enable. RGB333 packs 3 bits per channel into one byte.
+
+The `F8 13` bitmask protocol in hid-fanatecff is gated by `FTEC_WHEELBASE_LEDS`;
+DD+ does not have this quirk flag and ignores `F8 13` reports entirely.
+
+---
+
+## Base Compatibility
+
+| PID | Device | Tuning | Rev LEDs (FF 01 00) | F8 13 bitmask | Notes |
+|-----|--------|--------|---------------------|---------------|-------|
+| 0x0005 | CSL Elite PS4 | Yes | Yes | Yes | WHEELBASE_LEDS quirk |
+| 0x0006 | Podium DD1 | Yes | Likely | No | No WHEELBASE_LEDS |
+| 0x0007 | Podium DD2 | Yes | Likely | No | No WHEELBASE_LEDS |
+| 0x0E03 | CSL Elite (PC) | Yes | Yes | Yes | WHEELBASE_LEDS quirk |
+| **0x0020** | **CSL DD / DD+** | **Yes** | **Yes (confirmed)** | **No** | No WHEELBASE_LEDS |
+
+All DD-series bases (DD+, DD1, DD2, CSL DD) use the same `FF 01 xx` col03 protocol
+for LED colors. Only CSL Elite uses `F8 13`.
+
+---
+
+## Wheel Type Capabilities
+
+From FanaBridge wheel profile JSON files. `WheelType` from `.pws` `<Device WheelType="N">`:
+
+| Profile ID | Wheel | Rev LEDs | Flag LEDs | Button LEDs | Color format |
+|-----------|-------|----------|-----------|-------------|--------------|
+| CSSWFORMV2 | Formula V2.5 | 9 × RGB565 | 6 × RGB565 | — | rgb565 |
+| CSSWFORMV3 | Formula V3 | 9 × RGB565 | 6 × RGB565 | — | rgb565 |
+| CSSWF1ESV2 | F1 Esports V2 | 9 × RGB565 | 6 × RGB565 | — | rgb565 |
+| GTSWX | GT Extreme | 9 × RGB565 | 6 × RGB565 | 4 × RGB565 | rgb565 |
+| PHUB_PBME | Podium Hub + BME | 9 × RGB565 | 6 × RGB565 | — | rgb565 |
+| PHUB_PBMR | Podium Hub + BMR | — | — | 12 × RGB555 | **rgb555** |
+| PSWBMW | Podium SW BMW M4 GT3 | — | — | 12 × RGB565 | rgb565 |
+| PSWBENT | Podium SW Bentley GT3 | 9 × RGB565 | 6 × RGB565 | — | rgb565 |
+| CSSWBMW | BMW M3 GT2 | 9 × legacyOnOff | — | — | legacy (col01) |
+| CSSWPORSCHE | Porsche 918 RSR | 9 × legacyOnOff | — | — | legacy (col01) |
+| GTSWPRO | GT DD PRO Wheel | 9 × legacy3Bit | — | — | legacy (col01) |
+| CSLESWP1X | CSL ES P1 (Xbox) | 1 × legacyStripe | — | — | legacy (col01) |
+| CSLESWWRC | CSL ES WRC | 1 × legacyStripe | — | — | legacy (col01) |
+
+Wheels with `legacyOnOff`, `legacy3Bit`, or `legacyStripe` use col01 subcmds 0x06–0x0B
+and cannot use the col03 `FF 01 xx` protocol.
+
+**BaseType mapping** (from `.pws` `<Device BaseType="N">`):
+
+| BaseType | Device |
+|---------|--------|
+| 12 | ClubSport DD+ |
+| (others TBD) | — |
+
+---
+
+## iRacing Telemetry (IRSDK Shared Memory)
+
+For real-time LED animation, read from `Local\IRSDKMemMapFileName`.
+
+**Header offsets (little-endian i32):**
+
+| Offset | Field | Notes |
+|--------|-------|-------|
+| 4 | status | bit 0 = irsdk_stConnected |
+| 8 | tickRate | Loop rate in Hz |
+| 12 | sessionInfoUpdate | Increments when YAML changes |
+| 16 | sessionInfoLen | Length of YAML blob |
+| 20 | sessionInfoOffset | Byte offset to YAML blob |
+| 24 | numVars | Count of telemetry variables |
+| 28 | varHeaderOffset | Byte offset to variable header array |
+| 48 | bufDesc[0].tickCount | First buffer tick count (i32) |
+| 52 | bufDesc[0].offset | First buffer data offset (i32) ← live data here |
+
+**Variable header** (144 bytes each, starting at `varHeaderOffset`):
+
+| Offset | Type | Field |
+|--------|------|-------|
+| 0 | i32 | type: 0=char, 1=bool, 2=int, 3=bitField, 4=float, 5=double |
+| 4 | i32 | offset into live data buffer |
+| 16 | char[32] | name (null-terminated) |
+| 48 | char[64] | description |
+| 112 | char[32] | unit |
+
+**Key variables:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `RPM` | float | Engine RPM |
+| `ShiftRPM` | float | Upshift target RPM |
+| `RevLimiter` | float | Hard rev limit |
+| `Gear` | int | −1=R, 0=N, 1+=forward |
+| `Speed` | float | Speed in m/s |
+| `SessionFlags` | bitField | Race flag bitmask |
+| `IsOnTrack` | bool | Player is on track |
+| `IsInGarage` | bool | Player is in garage |
+
+**SessionFlags bitmask:**
+
+| Flag | Bit |
+|------|-----|
+| Checkered | 0x00000001 |
+| White | 0x00000002 |
+| Green | 0x00000004 |
+| Yellow | 0x00000008 |
+| Red | 0x00000010 |
+| Blue | 0x00000020 |
+| Yellow Waving | 0x00000100 |
+| Caution | 0x00002000 |
+| Caution Waving | 0x00004000 |
+| Black | 0x00008000 |
+
+**Session YAML shift light fields** (under `DriverInfo`):
+- `DriverCarSLFirstRPM` — RPM at which first LED activates
+- `DriverCarSLLastRPM` — RPM at which last LED activates
+- `DriverCarSLShiftRPM` — RPM to upshift (threshold for flash)
+- `DriverCarSLBlinkRPM` — RPM for blink warning
+
+---
+
+## Opening the Device on Windows
 
 ```rust
 CreateFileW(
     path,
     GENERIC_READ | GENERIC_WRITE,
-    FILE_SHARE_READ | FILE_SHARE_WRITE,  // shared — allows FanaLab to coexist
-    null,
+    FILE_SHARE_READ | FILE_SHARE_WRITE,   // shared — allows coexistence
+    null_mut(),
     OPEN_EXISTING,
     FILE_FLAG_OVERLAPPED,
     0,
 )
 ```
 
-**FanaLab conflict:** FanaLab typically opens the device with exclusive access
-(`FILE_SHARE_NONE`). If FanaLab is running, `CreateFileW` will return
-`INVALID_HANDLE_VALUE` with `ERROR_SHARING_VIOLATION (32)`. Close FanaLab
-before running this tool.
+Use `FILE_SHARE_READ | FILE_SHARE_WRITE` to allow coexistence with the Fanatec
+App. FanaLab typically opens with exclusive access; if it is running,
+`CreateFileW` returns `INVALID_HANDLE_VALUE` / `ERROR_SHARING_VIOLATION (32)`.
 
----
-
-## HID collections (PID 0x0020 — CSL DD / ClubSport DD+)
-
-Windows exposes PID 0x0020 as **three separate HID collections**:
-
-| Path suffix | Role | Report size |
-|---|---|---|
-| `&col01` | Display and ACK burst channel | 8 bytes |
-| `col02` | (Varies by firmware) | — |
-| `col03` | Tuning + LED control (confirmed on CS DD+) | 64 bytes |
-
-`enumerate_fanatec()` returns all collections. The correct one for tuning must be
-found by probing: attempt `WriteFile` and move to the next collection on
-`ERROR_INVALID_FUNCTION`. On the ClubSport DD+ this is col03; the probe loop is
-order-independent and caches the result in a `OnceLock`.
-
-**col01** is also written to after every tuning write — see *Col01 ACK burst* below.
-
----
-
-## Windows software locations
-
-**Fanatec SDK DLL:**
-```
-C:\Program Files\Fanatec\Fanatec Wheel\fw\EndorFanatecSdk64_VS2019.dll
-```
-This DLL implements the high-level Fanatec API (property get/set, LED
-control). It communicates with the base over the same HID collections
-described above. Useful reference for future reverse-engineering.
-
-**Fanatec App config:**
-```
-%APPDATA%\com.example\Fanatec\
-```
-Stores saved tuning profiles and app preferences.
-
----
-
-## Wake sequence (required before reads AND writes)
-
-The DD+ requires CMD `0x06` (toggle) before **both reads and writes**.
-
-```
-[0xFF, 0x03, 0x06, 0x00 × 61]   ← CMD_TOGGLE_ADVANCED
-```
-
-**Important: 0x06 is a TOGGLE, not an enable.** Each call flips the
-current state (ON → OFF or OFF → ON). The device starts in an unknown
-state relative to a new process, so a single unconditional toggle is
-unreliable across consecutive runs.
-
-**For reads (startup probe) — double-toggle with probe:**
-1. Send 0x06 toggle + 500 ms + 0x04 request → poll for response
-2. If response received → advanced mode is now ON, proceed
-3. If no response → we toggled it OFF (it was already ON); send 0x06
-   again + 500 ms + 0x04 request → this always succeeds
-
-This converges in ≤ 2 toggles regardless of starting state.
-
-**For writes — one unconditional toggle before every write:**
-
-The toggle opens a write window for exactly one write cycle. The window
-expires after the write completes — a second write requires another toggle.
-Sending CMD `0x00` (write) without a preceding toggle results in no change
-(readback returns the same values). Do not attempt to reuse the write window
-across multiple writes.
-
-```
-1. Send 0x06 toggle
-2. Sleep 500 ms
-3. Send CMD 0x00 (write report)
-```
-
-The Fanatec App likely issues a fresh toggle before every user-initiated
-tuning change for the same reason.
-
-Root cause: the Linux driver (`hid-ftecff.c`) sends this toggle on device
-probe, so the Fanatec App pre-wakes the device at startup. Our tool must
-do the same when connecting cold, but must not assume the starting state.
-
----
-
-## Typical read flow
-
-```
-1. Open device (shared, overlapped)
-2. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61])   ← wake / advanced-mode toggle
-3. Sleep 500 ms
-4. Drain stale input: loop ReadFile(50ms timeout) until timeout
-5. WriteFile([0xFF, 0x03, 0x02, 0x00 × 61])   ← request values (0x02 = READ)
-6. ReadFile(buf, 64, overlapped)  with WaitForSingleObject(event, 200ms)
-7. Check buf[0]==0xFF && buf[1]==0x03          ← tuning report?
-   If not, loop back to step 6 (other HID traffic may arrive first)
-8. Decode parameters from buf
-```
-
----
-
-## Typical write flow
-
-The DD+ expects **all parameters in a single report**. Build one 64-byte
-buffer with CMD=0x00, copy the current device state shifted by one byte,
-overlay the new values, and send once.
-
-```
-1. Read current values (see Typical read flow above) → store as base
-2. Build write buffer from the read snapshot:
-   buf[0]    = 0xFF, buf[1] = 0x03, buf[2] = 0x00 (CMD_WRITE_PARAM)
-   buf[3..63] = base[2..62]  (shift read state right by 1)
-   buf[3]    = 0x01          ← REQUIRED: see note below
-   buf[addr+1] = encoded_value  (for each param to update)
-3. WriteFile(write_buf)      ← single write, all params at once
-4. Send col01 ACK burst      ← see Col01 ACK burst section below
-5. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61])  ← toggle to readable mode
-6. Sleep 200 ms
-7. Drain stale input: loop ReadFile(50ms timeout) until timeout
-8. WriteFile([0xFF, 0x03, 0x02, 0x00 × 61])  ← request values (0x02 = READ)
-9. ReadFile → verify
-10. WriteFile([0xFF, 0x03, 0x06, 0x00 × 61]) ← toggle back to writable mode
-```
-
-**Byte 3 must be `0x01`:** The device silently ignores write reports when
-byte 3 is `0x81`. The readback buffer returns either `0x01` or `0x81` in
-this position depending on the current toggle state. If copied verbatim into
-the write buffer, writes made when the device is in the `0x81` state are
-ignored. Always force `buf[3] = 0x01` after the copy. Confirmed empirically
-across two separate wheels — this is the single most reliable fix.
-
-**Note:** sending each parameter in its own report (one at a time) does not
-work on the DD+ — readback shows no change.
-
----
-
-## Wheel type identifiers
-
-`.pws` profile files contain a `<Device>` tag with `BaseType` and `WheelType`
-attributes identifying which base and rim the profile was tuned for:
-
-```xml
-<Device BaseType="12" WheelType="19" SWType="10" PedalType="4" .../>
-```
-
-Known values observed so far:
-
-| Attribute | Value | Hardware |
-|-----------|-------|----------|
-| BaseType | 12 | ClubSport DD+ |
-| WheelType | 19 | Observed in CS DD+ profiles |
-| WheelType | 15 | Observed in P DD2 profiles |
-
-Full mapping is not yet determined. These values are extracted by the profile
-parser (`PwsProfile::base_type` / `::wheel_type`) for future LED and display
-control.
-
-**Relevance for LED/ITM control:** profiles contain wheel-specific sections
-(`RevLedProfileWheel`, `ButtonLedProfile`, `DisplayLedProfile`, `ITMPRofile`)
-that vary by rim. When LED control is implemented, `WheelType` will be matched
-against the detected attached rim to select the correct section.
+Use `WriteFile` for all HID output (not `HidD_SetFeature`). The Fanatec driver
+uses `hid_hw_output_report`, which maps to HID OUTPUT reports, not FEATURE reports.
 
 ---
 
 ## Game IDs
 
-From `HardwareConfiguration.xml`. Each profile and settings block references a
-game by `(MajorId, MinorId)`. When `GameMajorId = -1`, the entry is global
-(not game-specific).
+From `HardwareConfiguration.xml`. `GameMajorId = -1` = global (not game-specific).
 
 | Game | MajorId | MinorId |
 |------|---------|---------|
@@ -340,27 +628,41 @@ game by `(MajorId, MinorId)`. When `GameMajorId = -1`, the entry is global
 | Assetto Corsa Competizione | 0 | 1 |
 | Assetto Corsa EVO | 0 | 2 |
 | Assetto Corsa Rally | 0 | 3 |
-| Automobilista | 1 | 0 |
 | Automobilista 2 | 1 | 1 |
-| DiRT Rally | 2 | 0 |
 | DiRT Rally 2.0 | 2 | 1 |
 | F1 24 | 4 | 10 |
 | F1 25 | 4 | 11 |
 | iRacing | 5 | 0 |
-| Project CARS 2 | 8 | 1 |
-| RaceRoom | 10 | 0 |
 | rFactor 2 | 11 | 1 |
 | Le Mans Ultimate | 11 | 2 |
 | Forza Motorsport | 17 | 0 |
 
 ---
 
-## LED color index
+## Fanatec App XML Files
 
-From `CurrentSettings.xml`. Color index values used in LED configurations:
+Location: `C:\Program Files\Fanatec\FanatecService\Service\xml\`
 
-| ColorIndex | Color |
-|-----------|-------|
+| File | Contents |
+|------|---------|
+| `HardwareConfiguration.xml` | Hardware capabilities, game list, MajorId/MinorId |
+| `CurrentSettings.xml` | LED color tables, button LED layouts, ITM display profiles |
+| `Configuration.xml` | Telemetry channel definitions per game |
+| `CarsList_{game}.xml` | carPath → display name |
+| `ProfileCarsList_{game}.xml` | carPath → `.pws` filename |
+
+fanatec-tuner reads `CarsList_*.xml` and `ProfileCarsList_*.xml` for profile
+matching. `HardwareConfiguration.xml` and `CurrentSettings.xml` contain wheel
+capability tables and LED color index definitions.
+
+---
+
+## ColorIndex Mapping
+
+From `CurrentSettings.xml` LED configurations (used in `.pws` `RevLedProfileWheel`):
+
+| Index | Color |
+|-------|-------|
 | 0 | Off |
 | 1 | Red |
 | 2 | Green |
@@ -370,151 +672,3 @@ From `CurrentSettings.xml`. Color index values used in LED configurations:
 | 6 | Cyan (unconfirmed) |
 | 7 | White |
 | 12 | Orange |
-
-Values 5 and 6 appear in the data but have not been visually verified.
-
----
-
-## Button LED profiles
-
-Three wheel rim types with distinct button LED layouts, from `CurrentSettings.xml`:
-
-| Profile key | Description |
-|-------------|-------------|
-| `ButtonLedsBMW` | BMW GT2 rim — 12 buttons, RGB per button |
-| `ButtonLedsBMR` | BMW M4 rim — 12 buttons, RGB per button |
-| `ButtonLedsGTSWX` | GT SWX rim — 12 buttons, RGB per button + RPM-triggered color cycling |
-
----
-
-## ITM profiles (In-Telemetry-Monitor)
-
-Wheel-specific display profiles, from `CurrentSettings.xml`:
-
-| Profile key | Target display |
-|-------------|----------------|
-| `BaseProfile` | Base unit display |
-| `BmeProfile` | BMW M4 (BME) wheel |
-| `BentleyProfile` | Bentley wheel |
-| `GtswxProfile` | GT SWX wheel |
-| `SmallOledProfile` | Wheels with a small OLED display |
-
----
-
-## Telemetry channels
-
-Channel definitions per game, from `Configuration.xml`.
-
-**All games:**
-RPM, Speed, Gear, Fuel, Position, LapNumber, Brake, Throttle
-
-**ACC / AC EVO additionally:**
-Flags (Yellow, Blue, White, Green, Orange), RainLights, DirectionLights,
-TC graphics, ABS graphics, EngineMap, DRS
-
----
-
-## Fanatec App XML files
-
-Location: `C:\Program Files\Fanatec\FanatecService\Service\xml\`
-
-| File | Contents |
-|------|----------|
-| `HardwareConfiguration.xml` | Hardware capabilities, game list, `MajorId`/`MinorId` mappings |
-| `CurrentSettings.xml` | LED color tables, button LED layouts per rim, ITM display profiles, per-game LED trigger configurations |
-| `Configuration.xml` | Telemetry channel definitions per game |
-| `CarsList_{game}.xml` | carPath → display name (one file per game) |
-| `ProfileCarsList_{game}.xml` | carPath → `.pws` filename (one file per game) |
-
-fanatec-tuner currently reads `CarsList_*.xml` and `ProfileCarsList_*.xml` for
-profile matching. `CurrentSettings.xml` and `Configuration.xml` will be used
-when LED and display control is implemented.
-
----
-
-## Col01 ACK burst
-
-After every successful tuning write on col03, send **4 ON/OFF pulse pairs** on
-col01 (the display/ACK channel). This matches FanaBridge behaviour and improves
-write reliability. Each packet is 8 bytes sent via `WriteFile` (not `HidD_SetOutputReport`).
-
-```
-ON:  [0x01, 0xF8, 0x09, 0x01, 0x06, 0xFF, 0x02, 0x00]
-OFF: [0x01, 0xF8, 0x09, 0x01, 0x06, 0x00, 0x00, 0x00]
-```
-
-Sequence: ON → 1ms → OFF → 1ms → repeat × 4 = 8 packets total.
-
-If col01 cannot be opened (device not present or exclusive access), skip the
-burst — writes still succeed without it.
-
----
-
-## LED protocol (col03)
-
-LED reports share the col03 handle with tuning reports. They are distinguished
-by byte 1: tuning uses `0x03`, LED uses `0x01`.
-
-```
-Byte 0:  0xFF  — report ID
-Byte 1:  0x01  — LED marker
-Byte 2:  subcmd
-Bytes 3+: payload (subcmd-dependent)
-```
-
-| Subcmd | Purpose | Max LEDs | Payload |
-|--------|---------|----------|---------|
-| `0x00` | Rev LED colors | 9 | RGB565 pairs, big-endian, 2 bytes each |
-| `0x01` | Flag LED colors | 6 | RGB565 pairs, big-endian, 2 bytes each |
-| `0x02` | Button LED colors | 12 | RGB565 pairs + commit byte at offset 27 |
-| `0x03` | Button LED intensities | 16 | 1 byte each (0–7, 3-bit); commit byte at offset 18 |
-
-**RGB565 encoding:** blue occupies bits 15–11, green bits 10–5, red bits 4–0.
-Each value is packed big-endian (high byte first) in the report. In code:
-```
-value = (b5 << 11) | (g6 << 5) | r5
-buf[offset]   = (value >> 8) as u8
-buf[offset+1] = (value & 0xFF) as u8
-```
-
-**Two-phase button LED commit:** to apply colors and intensities atomically, send
-colors with `commit=0` (byte 27 = 0x00) then intensities with `commit=1`
-(byte 18 = 0x01). The second write triggers the visible update.
-
-Some wheels use `rgb555` encoding (5-5-5, no extra green bit) — see
-`colorFormat` in `profiles/wheels/*.json`.
-
----
-
-## Display protocol (col01)
-
-The 3-digit 7-segment display is driven via the col01 channel using 8-byte
-reports. Matches the Linux `hid-fanatecff` driver `ftec_set_display()` and
-FanaBridge `DisplayEncoder`.
-
-```
-[0x01, 0xF8, 0x09, 0x01, 0x02, seg1, seg2, seg3]
-```
-
-Bytes 0–4 are fixed; bytes 5–7 are the 7-segment encoded characters for the
-three digit positions (left to right).
-
-**7-segment bit layout:**
-```
-  seg0  ───
-seg5 |     | seg1
-  seg6  ───
-seg4 |     | seg2
-  seg3  ───    • seg7 = decimal point
-```
-
-| Value | Meaning |
-|-------|---------|
-| `0x00` | Blank |
-| `0x40` | Dash (`-`) |
-| `0x80` | Dot (`.`) |
-| `0x3F`–`0x6F` | Digits 0–9 |
-| `0x50` | `r` (reverse gear indicator) |
-| `0x54` | `n` (neutral gear indicator) |
-
-All three digits are always sent; use `0x00` (blank) for unused positions.

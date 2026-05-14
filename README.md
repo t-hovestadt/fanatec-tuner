@@ -470,6 +470,10 @@ See [docs/SHIFT_LIGHTS.md](docs/SHIFT_LIGHTS.md) for the full catalog.
 - **Maurice Böschen** — FanaLab tuning profiles for 900+ cars
 - **[hid-fanatecff](https://github.com/gotzl/hid-fanatecff)** —
   Linux kernel driver; wire protocol reference
+- **[Lovely Car Data](https://github.com/Lovely-Sim-Racing/lovely-car-data)**
+  (Lovely Sim Racing, ATSR, Gomez Sim Industries) — per-car LED profiles with
+  verified per-LED colors and per-gear RPM thresholds.
+  Licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 
 ---
 

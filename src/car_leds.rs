@@ -13,6 +13,21 @@ pub struct LedStage {
     pub color: String,
 }
 
+/// Per-gear RPM thresholds for the 9 Fanatec LED positions.
+///
+/// Sourced from Lovely Car Data (github.com/Lovely-Sim-Racing/lovely-car-data),
+/// CC BY-NC-SA 4.0. Each gear key ("R", "N", "1"–"N") maps to per-LED thresholds
+/// and the redline RPM at which the flash activates for that gear.
+#[derive(Debug, Deserialize)]
+pub struct GearRpms {
+    /// RPM activation threshold for each of the 9 Fanatec LED positions (left to right).
+    /// For `outside_center` pattern, positions 1 and 9 share the same threshold,
+    /// positions 2 and 8 share the same threshold, and so on (symmetric).
+    pub thresholds: Vec<f64>,
+    /// RPM at which the shift flash activates for this gear.
+    pub redline: f64,
+}
+
 /// Per-car LED shift light pattern sourced from iRacing user manuals.
 ///
 /// RPM thresholds are **not** stored here — they come from iRacing session YAML
@@ -42,6 +57,11 @@ pub struct CarLedProfile {
     pub pit_limiter_color: Option<String>,
     /// Whether the pit limiter LEDs flash (`true`) or hold solid (`false`).
     pub pit_limiter_flash: Option<bool>,
+    /// Per-gear RPM thresholds for each of the 9 Fanatec LED positions.
+    ///
+    /// Key is the gear string ("R", "N", "1", "2", …). `None` for cars without
+    /// verified per-gear data (legacy entries, oval/dirt cars with `pattern = "none"`).
+    pub gear_rpms: Option<HashMap<String, GearRpms>>,
     /// Source notes from the iRacing user manual.
     pub notes: Option<String>,
 }
@@ -126,6 +146,7 @@ pub fn default_led_profile() -> CarLedProfile {
         flash_hz: 15,
         pit_limiter_color: Some("#FFFF00".to_string()),
         pit_limiter_flash: Some(true),
+        gear_rpms: None,
         notes: Some("Generic fallback: green→yellow→red L→R, flash red".to_string()),
     }
 }
