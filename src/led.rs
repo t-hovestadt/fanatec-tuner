@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::hid::REPORT_SIZE;
+use crate::hid::{self, FanatecDevice, REPORT_SIZE};
 
 // ── Col03 LED report header ──────────────────────────────────────────────────
 const LED_REPORT_ID: u8 = 0xFF;
@@ -103,6 +103,25 @@ pub fn color_index_to_rgb(index: u8) -> (u8, u8, u8) {
 pub fn color_index_to_rgb565(index: u8) -> u16 {
     let (r, g, b) = color_index_to_rgb(index);
     rgb_to_rgb565(r, g, b)
+}
+
+/// Clear all wheel LEDs to off.
+///
+/// Sends zeroed rev, flag, and button LED reports to the wheel base.
+/// Double-sends with a 50 ms gap for reliability.
+/// Non-fatal — errors are silently ignored (best-effort cleanup).
+pub fn clear_all_leds(dev: &FanatecDevice) {
+    send_led_off(dev);
+    std::thread::sleep(std::time::Duration::from_millis(50));
+    send_led_off(dev);
+    eprintln!("[led] all LEDs cleared");
+}
+
+fn send_led_off(dev: &FanatecDevice) {
+    let _ = hid::write_report(dev, &build_rev_led_report(&[]));
+    let _ = hid::write_report(dev, &build_flag_led_report(&[]));
+    let _ = hid::write_report(dev, &build_button_color_report(&[], false));
+    let _ = hid::write_report(dev, &build_button_intensity_report(&[], true));
 }
 
 /// Compute rev LED colors for the current RPM using per-LED thresholds.

@@ -19,6 +19,8 @@ enum LedCmd {
     CarChanged(Box<PwsProfile>, Option<String>),
     /// The game exited; clear LEDs and stop animating.
     GameExited,
+    /// fanatec-tuner is shutting down (Ctrl-C); clear all LEDs then return.
+    Shutdown,
 }
 
 /// How long to wait for iRacing's process to reappear after it disappears
@@ -119,6 +121,18 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
         let col03_for_led = col03_path.clone();
         let col01_for_led = col01_path.clone();
         std::thread::spawn(move || led_thread(col03_for_led, col01_for_led, led_rx));
+    }
+
+    // Register Ctrl-C handler — sends Shutdown so the LED thread clears all LEDs
+    // before we exit.  Sleeps 300 ms to give the thread time (~150 ms) to finish.
+    {
+        let led_tx_ctrlc = led_tx.clone();
+        ctrlc::set_handler(move || {
+            let _ = led_tx_ctrlc.send(LedCmd::Shutdown);
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            std::process::exit(0);
+        })
+        .expect("Error setting Ctrl-C handler");
     }
 
     let interval = Duration::from_secs(config.monitor.scan_interval_secs());
@@ -233,6 +247,9 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
 
                     // Apply tuning always; LED config only when verified.
                     if let Some(ref d) = col03 {
+                        // Clear previous car's LED state before applying new profile.
+                        led::clear_all_leds(d);
+                        std::thread::sleep(std::time::Duration::from_millis(100));
                         match crate::apply_write(d, col01.as_ref(), &prof) {
                             Some(_) => {}
                             None => eprintln!("  applied (unverified)"),
@@ -264,10 +281,15 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                 Ok(LedCmd::GameExited) => {
                     active = false;
                     if let Some(ref d) = col03 {
-                        let off = led::build_rev_led_report(&[0u16; 9]);
-                        let _ = hid::write_report(d, &off);
+                        led::clear_all_leds(d);
                     }
                     last_leds = [0u16; 9];
+                }
+                Ok(LedCmd::Shutdown) => {
+                    if let Some(ref d) = col03 {
+                        led::clear_all_leds(d);
+                    }
+                    return;
                 }
                 Err(mpsc::TryRecvError::Empty) => break,
                 Err(mpsc::TryRecvError::Disconnected) => return,
