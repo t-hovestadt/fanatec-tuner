@@ -1,7 +1,10 @@
 name: CI
+
 on: [push]
+
 jobs:
   build:
+    name: Build and upload artifact
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -11,3 +14,18 @@ jobs:
         with:
           name: fanatec-tuner
           path: target/release/fanatec-tuner.exe
+
+  release:
+    name: Publish GitHub Release
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release
+      - name: Create release and upload exe
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create ${{ github.ref_name }} target/release/fanatec-tuner.exe --generate-notes --title ${{ github.ref_name }}
