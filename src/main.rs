@@ -1,6 +1,7 @@
 mod car_leds;
 mod carlist;
 mod config;
+mod cpu;
 mod display;
 mod games;
 mod hid;
@@ -25,6 +26,9 @@ use tuning::{
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
+    /// Skip CPU 0 exclusion (for non-iRacing setups or manual affinity management).
+    #[arg(long, global = true)]
+    no_cpu_exclude: bool,
 }
 
 #[derive(Subcommand)]
@@ -63,6 +67,12 @@ enum Command {
 
 fn main() {
     let cli = Cli::parse();
+
+    if cli.no_cpu_exclude {
+        eprintln!("[cpu] CPU 0 exclusion disabled by --no-cpu-exclude flag");
+    } else {
+        cpu::avoid_cpu0();
+    }
 
     // Load config (fanatec-tuner.toml next to the exe, or CWD)
     let config_path = std::env::current_exe()
