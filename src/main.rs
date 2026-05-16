@@ -5,6 +5,7 @@ mod cpu;
 mod display;
 mod games;
 mod hid;
+mod itm;
 mod led;
 mod monitor;
 mod profile;

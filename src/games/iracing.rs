@@ -28,6 +28,7 @@ pub struct LiveTelemetry {
     pub gear: i32, // -1 = R, 0 = N, 1+ = forward
     pub session_flags: u32,
     pub is_on_track: bool,
+    pub speed: f32, // m/s — multiply by 2.23694 for MPH
 }
 
 /// Returns `(car_path, car_screen_name)` for the player's car.
@@ -144,12 +145,14 @@ pub fn live_telemetry() -> Option<LiveTelemetry> {
         find_var_u32(data, num_vars, var_hdr_off, buf_off, "SessionFlags").unwrap_or(0);
     let is_on_track =
         find_var_bool(data, num_vars, var_hdr_off, buf_off, "IsOnTrack").unwrap_or(false);
+    let speed = find_var_f32(data, num_vars, var_hdr_off, buf_off, "Speed").unwrap_or(0.0);
 
     Some(LiveTelemetry {
         rpm,
         gear,
         session_flags,
         is_on_track,
+        speed,
     })
 }
 

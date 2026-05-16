@@ -9,6 +9,7 @@ use crate::config;
 use crate::display;
 use crate::games::{self, CarDetected};
 use crate::hid;
+use crate::itm;
 use crate::led;
 use crate::profile::{self, PwsProfile};
 use crate::tuning;
@@ -274,6 +275,12 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
     let mut flag_blink_on = true;
     let mut flag_last_flip = Instant::now();
 
+    // ITM OLED state.
+    let mut itm_active = false;
+    let mut itm_initialized = false;
+    let mut itm_heartbeat_counter: u32 = 0; // fires every 4 frames  (~8 Hz)
+    let mut itm_telemetry_counter: u32 = 0; // fires every 15 frames (~2 Hz)
+
     loop {
         let tick_start = Instant::now();
 
@@ -343,6 +350,25 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                     last_leds = [0u16; 9]; // force first-frame write
                     last_gear = i32::MIN; // force gear display update on next frame
                     last_flag_leds = [0u16; 6]; // force flag update on next frame
+
+                    // ── ITM OLED init ──────────────────────────────────────────
+                    if let Some(ref d) = col03 {
+                        let _ = hid::write_report(d, &itm::build_itm_enable());
+                        std::thread::sleep(Duration::from_millis(50));
+                        let _ = hid::write_report(d, &itm::build_itm_page_select(0x01));
+                        std::thread::sleep(Duration::from_millis(50));
+                        for pkt in itm::page1_layout() {
+                            let _ = hid::write_report(d, &pkt);
+                            std::thread::sleep(Duration::from_millis(20));
+                        }
+                        let _ = hid::write_report(d, &itm::page1_field_text());
+                        itm_active = true;
+                        itm_initialized = true;
+                        itm_heartbeat_counter = 0;
+                        itm_telemetry_counter = 0;
+                        println!("  [itm] OLED enabled — Page 1");
+                    }
+                    let _ = itm_initialized; // suppress unused warning if col03 is None
                 }
                 Ok(LedCmd::GameExited) => {
                     active = false;
@@ -361,6 +387,16 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                     last_leds = [0u16; 9];
                     last_gear = i32::MIN;
                     last_flag_leds = [0u16; 6];
+
+                    // Disable OLED on game exit.
+                    if itm_active {
+                        if let Some(ref d) = col03 {
+                            let _ = hid::write_report(d, &itm::build_itm_disable());
+                        }
+                        itm_active = false;
+                        itm_initialized = false;
+                        println!("  [itm] OLED disabled");
+                    }
                 }
                 Ok(LedCmd::Shutdown) => {
                     if let Some(ref d) = col03 {
@@ -374,6 +410,12 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                             display::SEG_BLANK,
                         );
                         let _ = hid::write_raw(col01_dev, &blank);
+                    }
+                    // Disable OLED on shutdown.
+                    if itm_active {
+                        if let Some(ref d) = col03 {
+                            let _ = hid::write_report(d, &itm::build_itm_disable());
+                        }
                     }
                     return;
                 }
@@ -465,7 +507,35 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
             }
         }
 
-        // ── 3. Sleep remainder of frame ───────────────────────────────────────
+        // ── 3. ITM OLED heartbeat + telemetry ────────────────────────────────
+        if itm_active {
+            itm_heartbeat_counter += 1;
+            itm_telemetry_counter += 1;
+
+            // Heartbeat at ~8 Hz (every 4 frames × 33 ms ≈ 132 ms).
+            if itm_heartbeat_counter >= 4 {
+                itm_heartbeat_counter = 0;
+                if let Some(ref d) = col03 {
+                    let _ = hid::write_report(d, &itm::build_itm_heartbeat(0x0B));
+                }
+            }
+
+            // Telemetry at ~2 Hz (every 15 frames × 33 ms ≈ 495 ms).
+            if itm_telemetry_counter >= 15 {
+                itm_telemetry_counter = 0;
+                if let Some(t) = games::iracing::live_telemetry() {
+                    let speed_mph = (t.speed * 2.23694_f32) as i32;
+                    let mut values = [0i32; 14];
+                    values[0] = t.gear;
+                    values[1] = speed_mph;
+                    if let Some(ref d) = col03 {
+                        let _ = hid::write_report(d, &itm::build_itm_telemetry(&values));
+                    }
+                }
+            }
+        }
+
+        // ── 4. Sleep remainder of frame ───────────────────────────────────────
         let elapsed = tick_start.elapsed();
         if elapsed < frame {
             std::thread::sleep(frame - elapsed);
