@@ -18,6 +18,9 @@ Replaces manual profile switching in FanaLab or the Fanatec App.
   sent as static one-shot writes to firmware flash; real-time RPM animation
   requires either the Fanatec App or iRacing's shift indicator (see
   [iRacing Shift LEDs](#iracing-shift-leds))
+- **LED cleanup** — all wheel LEDs (rev, button, flag) are cleared via direct
+  HID commands on car switch, game exit, and Ctrl-C shutdown; LEDs never stay
+  stuck after a session ends
 - **XML car list matching** — uses Fanatec App's `ProfileCarsList` and
   `CarsList` XMLs for exact iRacing `carPath → .pws` mapping
 - **Fresh HID per write** — no stale handles; enumerate once at startup,
@@ -26,6 +29,9 @@ Replaces manual profile switching in FanaLab or the Fanatec App.
   protobuf FF 10 decode, tuning state diff, LED subcmd, col01 game state, rate
   stats every 10 s
 - **One-shot apply** — apply a single profile from the command line
+- **CPU 0 exclusion** — automatically avoids CPU 0 on startup to prevent
+  competing with iRacing's sim thread (Type B stutters); disable with
+  `--no-cpu-exclude`
 
 ---
 
@@ -99,6 +105,29 @@ does not animate LEDs on its own.
 
 Button LED colors and brightness are static (set once per car change) and work
 independently of the above.
+
+---
+
+## LED Cleanup
+
+fanatec-tuner sends direct HID LED-off commands (`FF 01 00` with all-zero
+RGB565 values) via the LED thread in three situations:
+
+| Trigger | What fires |
+|---------|-----------|
+| Car switch | LEDs cleared before the new profile is applied |
+| Game exit (iRacing process gone) | All LEDs cleared immediately |
+| Ctrl-C shutdown | All LEDs cleared before process exits |
+
+This covers the "LEDs stuck after game exit" case that occurs when FanaLab or
+iRacing's native shift indicator is driving the LEDs. Because fanatec-tuner
+sends the LED-off command directly to firmware (not via shared memory), the
+clear is guaranteed even if FanaLab or iRacing are still running.
+
+**Note for sim-teleport users**: if you are using iracing-teleport's
+`--zero-on-exit` flag (which zeroes shared memory so FanaLab sees RPM=0),
+fanatec-tuner's direct HID clear is faster and more reliable — FanaLab has to
+poll for the RPM change, while the HID command takes effect immediately.
 
 ---
 
@@ -249,7 +278,7 @@ Monitoring — press Ctrl-C to stop
   [led] rev: 9 colors
   [led] buttons: 12 sent
   [led] saved
-[10:12:08] Game exited — wheel unchanged
+[10:12:08] Game exited — LEDs cleared
 ```
 
 If a car has no matching profile:
@@ -274,12 +303,22 @@ fanatec-tuner sniff --verbose     Full 64-byte raw capture
 fanatec-tuner diag                HID diagnostic — dump collections and caps
 ```
 
+Global options:
+
+```
+--no-cpu-exclude    Skip CPU 0 exclusion (useful if not running alongside iRacing,
+                    or when using Process Lasso for manual affinity management)
+```
+
 Close the Fanatec App (`Fanatec.exe`) before running write commands to avoid
 conflicts. Do **not** stop `FWPnpService` — it is required for HID
 communication and the tool will fail to enumerate devices without it.
 
-Press **Ctrl+C** to stop monitor mode. On exit, the last-applied profile
-remains active — fanatec-tuner does not restore defaults or clear LEDs.
+Press **Ctrl+C** to stop monitor mode. On exit, fanatec-tuner sends direct
+HID LED-off commands (`clear_all_leds`) to the wheel base — rev, flag, and
+button LEDs are cleared before the process exits. Tuning parameters are not
+reset (the last-applied FFB values remain until the wheel is power-cycled or
+a new profile is applied).
 
 If you encounter `Access Denied` errors, try running as administrator.
 
