@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -215,10 +216,19 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
         .and_then(|p| hid::open_device_by_path(p).ok());
 
     // Animation state (populated on CarChanged).
+    //
+    // gear_rpms: per-gear thresholds + redline from Lovely Car Data.
+    // Key = gear string ("R", "N", "1", ...).
+    let mut gear_rpms: HashMap<String, (Vec<f64>, f64)> = HashMap::new();
+    // palette: pre-converted RGB565 per LED position (built from CarLedProfile stages).
     let mut palette = [0u16; 9];
-    let mut rpm_thresholds: Vec<u32> = Vec::new();
-    let mut flash_threshold: u32 = 0;
+    // flash_color_rgb565: color shown for all lit LEDs during the blink-on phase.
+    let mut flash_color_rgb565: u16 = 0;
+    // flash_period_ms: full on+off blink period in milliseconds.
     let mut flash_period_ms: u32 = 500;
+    // Fallback: static .pws thresholds used only when gear_rpms is empty.
+    let mut static_thresholds: Vec<f64> = Vec::new();
+    let mut static_flash_threshold: f64 = 0.0;
     let mut active = false;
 
     // Blink state.
@@ -235,17 +245,14 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
         loop {
             match rx.try_recv() {
                 Ok(LedCmd::CarChanged(prof, car_path)) => {
-                    // Determine whether this car has verified LED data.
-                    // Only cars imported from Lovely Car Data (gear_rpms present,
-                    // pattern != "none") get LED commands — everything else is
-                    // tuning only.
-                    let has_verified_leds = car_path
+                    // Find the Lovely Car Data LED profile (verified = pattern != "none").
+                    let led_profile_opt = car_path
                         .as_deref()
                         .and_then(|cp| car_leds::find_led_profile(&car_led_profiles, cp))
-                        .map(|p| p.pattern != "none")
-                        .unwrap_or(false);
+                        .filter(|p| p.pattern != "none");
+                    let has_verified_leds = led_profile_opt.is_some();
 
-                    // Apply tuning always; LED config only when verified.
+                    // Apply tuning always; send LED firmware config only when verified.
                     if let Some(ref d) = col03 {
                         // Clear previous car's LED state before applying new profile.
                         led::clear_all_leds(d);
@@ -260,22 +267,43 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                             println!("  [led] no verified LED data — tuning only");
                         }
                     }
-                    // Extract animation palette from profile (only for verified cars).
-                    if has_verified_leds {
-                        if let Some(ref rev) = prof.rev_led {
-                            for (i, &ci) in rev.colors.iter().take(9).enumerate() {
-                                palette[i] = led::color_index_to_rgb565(ci);
+
+                    // Reset animation state for the new car.
+                    gear_rpms.clear();
+                    static_thresholds.clear();
+                    static_flash_threshold = 0.0;
+                    flash_color_rgb565 = 0;
+                    active = false;
+
+                    if let Some(lp) = led_profile_opt {
+                        // Build stage-based palette and flash color from Lovely Car Data.
+                        palette = led::build_palette_from_stages(&lp.stages, &lp.colors);
+                        flash_color_rgb565 = led::hex_to_rgb565(&lp.flash_color);
+                        flash_period_ms = if lp.flash_hz > 0 {
+                            (1000u32 / lp.flash_hz as u32).max(50)
+                        } else {
+                            500
+                        };
+
+                        if let Some(ref gr) = lp.gear_rpms {
+                            // Priority 1 — Lovely Car Data per-gear thresholds.
+                            for (gear, grpms) in gr {
+                                gear_rpms.insert(
+                                    gear.clone(),
+                                    (grpms.thresholds.clone(), grpms.redline),
+                                );
                             }
-                            rpm_thresholds = rev.rpm_thresholds.clone();
-                            flash_threshold = rev.flash_threshold;
+                            active = true;
+                        } else if let Some(ref rev) = prof.rev_led {
+                            // Priority 2 — .pws static thresholds (keep Lovely palette).
+                            static_thresholds =
+                                rev.rpm_thresholds.iter().map(|&x| x as f64).collect();
+                            static_flash_threshold = rev.flash_threshold as f64;
                             flash_period_ms = rev.flash_period_ms.max(50);
                             active = true;
-                        } else {
-                            active = false;
                         }
-                    } else {
-                        active = false;
                     }
+
                     last_leds = [0u16; 9]; // force first-frame write
                 }
                 Ok(LedCmd::GameExited) => {
@@ -306,11 +334,29 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
             }
 
             if let Some(t) = games::iracing::live_telemetry() {
+                // Select per-gear thresholds from Lovely Car Data, or fall back to
+                // static .pws thresholds when gear_rpms is empty.
+                let gear_str: String = match t.gear {
+                    -1 => "R".to_string(),
+                    0 => "N".to_string(),
+                    g => g.to_string(),
+                };
+                let (thresholds, flash_thr): (&[f64], f64) = if !gear_rpms.is_empty() {
+                    gear_rpms
+                        .get(&gear_str)
+                        .or_else(|| gear_rpms.get("N"))
+                        .map(|(thr, rl)| (thr.as_slice(), *rl))
+                        .unwrap_or((&[], 0.0))
+                } else {
+                    (static_thresholds.as_slice(), static_flash_threshold)
+                };
+
                 let new_leds = led::compute_rev_leds(
                     t.rpm,
-                    &rpm_thresholds,
+                    thresholds,
                     &palette,
-                    flash_threshold,
+                    flash_thr,
+                    flash_color_rgb565,
                     blink_on,
                 );
                 if new_leds != last_leds {
