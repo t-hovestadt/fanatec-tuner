@@ -29,6 +29,35 @@ enum LedCmd {
 /// during a session transition before declaring the game exited.
 const GAME_GONE_GRACE_SECS: u64 = 30;
 
+// ── iRacing SessionFlags bitfield ────────────────────────────────────────────
+const FLAG_CHECKERED: u32 = 0x0000_0001;
+const FLAG_WHITE: u32 = 0x0000_0002;
+const FLAG_GREEN: u32 = 0x0000_0004;
+const FLAG_YELLOW: u32 = 0x0000_0008;
+const FLAG_RED: u32 = 0x0000_0010;
+const FLAG_BLUE: u32 = 0x0000_0020;
+const FLAG_DEBRIS: u32 = 0x0000_0040;
+const FLAG_YELLOW_WAVING: u32 = 0x0000_0100;
+const FLAG_ONE_TO_GREEN: u32 = 0x0000_0200;
+const FLAG_GREEN_HELD: u32 = 0x0000_0400;
+const FLAG_CAUTION: u32 = 0x0000_4000;
+const FLAG_CAUTION_WAVING: u32 = 0x0000_8000;
+const FLAG_BLACK: u32 = 0x0001_0000;
+const FLAG_DISQUALIFY: u32 = 0x0002_0000;
+const FLAG_FURLED: u32 = 0x0008_0000; // meatball — mechanical issue
+const FLAG_REPAIR: u32 = 0x0010_0000;
+
+// ── Flag LED colors (BGR565, computed at compile time) ────────────────────────
+const FLAG_COLOR_YELLOW: u16 = led::rgb_to_rgb565(255, 255, 0);
+const FLAG_COLOR_BLUE: u16 = led::rgb_to_rgb565(0, 0, 255);
+const FLAG_COLOR_GREEN: u16 = led::rgb_to_rgb565(0, 255, 0);
+const FLAG_COLOR_RED: u16 = led::rgb_to_rgb565(255, 0, 0);
+const FLAG_COLOR_WHITE: u16 = led::rgb_to_rgb565(255, 255, 255);
+const FLAG_COLOR_ORANGE: u16 = led::rgb_to_rgb565(255, 165, 0);
+
+/// Blink period for flashing flag LEDs (2.5 Hz).
+const FLAG_FLASH_PERIOD_MS: u64 = 400;
+
 pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
     if profiles.is_empty() {
         eprintln!("warning: no profiles loaded — auto-apply will do nothing");
@@ -240,6 +269,10 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
     let mut last_leds = [0u16; 9];
     // Gear display state (col01 7-segment).
     let mut last_gear: i32 = i32::MIN; // force first-frame write
+                                       // Flag LED state (6 LEDs on col03).
+    let mut last_flag_leds = [0u16; 6];
+    let mut flag_blink_on = true;
+    let mut flag_last_flip = Instant::now();
 
     loop {
         let tick_start = Instant::now();
@@ -309,6 +342,7 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
 
                     last_leds = [0u16; 9]; // force first-frame write
                     last_gear = i32::MIN; // force gear display update on next frame
+                    last_flag_leds = [0u16; 6]; // force flag update on next frame
                 }
                 Ok(LedCmd::GameExited) => {
                     active = false;
@@ -326,6 +360,7 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                     }
                     last_leds = [0u16; 9];
                     last_gear = i32::MIN;
+                    last_flag_leds = [0u16; 6];
                 }
                 Ok(LedCmd::Shutdown) => {
                     if let Some(ref d) = col03 {
@@ -349,11 +384,17 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
 
         // ── 2. Animate rev LEDs ───────────────────────────────────────────────
         if active {
-            // Advance blink phase.
+            // Advance rev LED blink phase.
             let half = Duration::from_millis(flash_period_ms as u64 / 2);
             if last_flip.elapsed() >= half {
                 blink_on = !blink_on;
                 last_flip = Instant::now();
+            }
+            // Advance flag LED blink phase (independent rate from rev LEDs).
+            let flag_half = Duration::from_millis(FLAG_FLASH_PERIOD_MS / 2);
+            if flag_last_flip.elapsed() >= flag_half {
+                flag_blink_on = !flag_blink_on;
+                flag_last_flip = Instant::now();
             }
 
             if let Some(t) = games::iracing::live_telemetry() {
@@ -401,6 +442,25 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                         let _ = hid::write_raw(col01_dev, &report);
                         last_gear = t.gear;
                     }
+                }
+
+                // ── Flag LEDs (6 flag LEDs on col03) ──────────────────────────
+                let new_flag_leds = match flag_color(t.session_flags) {
+                    Some((color, flash)) => {
+                        if flash && !flag_blink_on {
+                            [0u16; 6]
+                        } else {
+                            [color; 6]
+                        }
+                    }
+                    None => [0u16; 6],
+                };
+                if new_flag_leds != last_flag_leds {
+                    let report = led::build_flag_led_report(&new_flag_leds);
+                    if let Some(ref d) = col03 {
+                        let _ = hid::write_report(d, &report);
+                    }
+                    last_flag_leds = new_flag_leds;
                 }
             }
         }
@@ -552,6 +612,45 @@ fn fuzzy_match<'a>(profiles: &'a [PwsProfile], game: &str, car: &str) -> Option<
     profiles
         .iter()
         .find(|p| normalize(&p.game).starts_with(&ng) && nc.contains(&normalize(&p.car)))
+}
+
+/// Map an iRacing `SessionFlags` bitfield to a flag LED color and flash mode.
+///
+/// Returns `(color_rgb565, should_flash)` for the highest-priority active flag,
+/// or `None` when no relevant flag is set (LEDs off).  Priority order mirrors
+/// real racing convention: driver penalties > red > yellow > blue > white >
+/// checkered > green.
+fn flag_color(session_flags: u32) -> Option<(u16, bool)> {
+    // Driver-specific penalty flags — highest priority.
+    if session_flags & (FLAG_BLACK | FLAG_DISQUALIFY) != 0 {
+        return Some((FLAG_COLOR_ORANGE, true)); // black flag shown as flashing orange
+    }
+    if session_flags & (FLAG_FURLED | FLAG_REPAIR) != 0 {
+        return Some((FLAG_COLOR_ORANGE, true)); // meatball / repair flag
+    }
+    // Session flags.
+    if session_flags & FLAG_RED != 0 {
+        return Some((FLAG_COLOR_RED, false)); // solid — session stopped
+    }
+    if session_flags
+        & (FLAG_YELLOW | FLAG_CAUTION | FLAG_CAUTION_WAVING | FLAG_YELLOW_WAVING | FLAG_DEBRIS)
+        != 0
+    {
+        return Some((FLAG_COLOR_YELLOW, true)); // flashing yellow
+    }
+    if session_flags & FLAG_BLUE != 0 {
+        return Some((FLAG_COLOR_BLUE, true)); // flashing blue — let faster car pass
+    }
+    if session_flags & FLAG_WHITE != 0 {
+        return Some((FLAG_COLOR_WHITE, false)); // solid — final lap
+    }
+    if session_flags & FLAG_CHECKERED != 0 {
+        return Some((FLAG_COLOR_WHITE, true)); // flashing white — finish
+    }
+    if session_flags & (FLAG_GREEN | FLAG_GREEN_HELD | FLAG_ONE_TO_GREEN) != 0 {
+        return Some((FLAG_COLOR_GREEN, false)); // solid — go / formation
+    }
+    None // no relevant flag active
 }
 
 fn normalize(s: &str) -> String {

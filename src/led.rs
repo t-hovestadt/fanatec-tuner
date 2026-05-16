@@ -25,7 +25,7 @@ pub const INTENSITY_PAYLOAD_SIZE: usize = 16;
 /// Convert 24-bit RGB to 16-bit BGR565 (Fanatec wire format).
 /// Blue in bits 15–11, green in 10–5, red in 4–0.
 /// Packed big-endian in the HID report (high byte first).
-pub fn rgb_to_rgb565(r: u8, g: u8, b: u8) -> u16 {
+pub const fn rgb_to_rgb565(r: u8, g: u8, b: u8) -> u16 {
     let r5 = (r >> 3) as u16 & 0x1F;
     let g6 = (g >> 2) as u16 & 0x3F;
     let b5 = (b >> 3) as u16 & 0x1F;
