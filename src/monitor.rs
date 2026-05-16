@@ -6,6 +6,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use crate::car_leds;
 use crate::carlist;
 use crate::config;
+use crate::display;
 use crate::games::{self, CarDetected};
 use crate::hid;
 use crate::led;
@@ -237,6 +238,8 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
 
     // Dirty tracking — only write when LED state changes.
     let mut last_leds = [0u16; 9];
+    // Gear display state (col01 7-segment).
+    let mut last_gear: i32 = i32::MIN; // force first-frame write
 
     loop {
         let tick_start = Instant::now();
@@ -305,17 +308,37 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                     }
 
                     last_leds = [0u16; 9]; // force first-frame write
+                    last_gear = i32::MIN; // force gear display update on next frame
                 }
                 Ok(LedCmd::GameExited) => {
                     active = false;
                     if let Some(ref d) = col03 {
                         led::clear_all_leds(d);
                     }
+                    // Clear 7-segment display on game exit.
+                    if let Some(ref col01_dev) = col01 {
+                        let blank = display::build_display_report(
+                            display::SEG_BLANK,
+                            display::SEG_BLANK,
+                            display::SEG_BLANK,
+                        );
+                        let _ = hid::write_raw(col01_dev, &blank);
+                    }
                     last_leds = [0u16; 9];
+                    last_gear = i32::MIN;
                 }
                 Ok(LedCmd::Shutdown) => {
                     if let Some(ref d) = col03 {
                         led::clear_all_leds(d);
+                    }
+                    // Clear 7-segment display on shutdown.
+                    if let Some(ref col01_dev) = col01 {
+                        let blank = display::build_display_report(
+                            display::SEG_BLANK,
+                            display::SEG_BLANK,
+                            display::SEG_BLANK,
+                        );
+                        let _ = hid::write_raw(col01_dev, &blank);
                     }
                     return;
                 }
@@ -368,6 +391,15 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                         } else {
                             last_leds = new_leds;
                         }
+                    }
+                }
+
+                // ── Gear display (col01 7-segment) ────────────────────────────
+                if t.gear != last_gear {
+                    if let Some(ref col01_dev) = col01 {
+                        let report = display::build_gear_display(t.gear as i8);
+                        let _ = hid::write_raw(col01_dev, &report);
+                        last_gear = t.gear;
                     }
                 }
             }
