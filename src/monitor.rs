@@ -13,6 +13,7 @@ use crate::itm;
 use crate::led;
 use crate::profile::{self, PwsProfile};
 use crate::tuning;
+use crate::wheel;
 
 /// Commands sent from the monitor thread to the LED thread.
 enum LedCmd {
@@ -145,6 +146,10 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
     if col01_path.is_some() {
         println!("col01 (display/ACK) found");
     }
+
+    // Detect wheel capabilities before spawning the LED thread.
+    let wheel_caps = wheel::detect(&col03_path);
+
     println!("Monitoring — press Ctrl-C to stop\n");
 
     // Spawn the LED thread.  It owns the col03/col01 handles for their lifetime.
@@ -152,7 +157,8 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
     {
         let col03_for_led = col03_path.clone();
         let col01_for_led = col01_path.clone();
-        std::thread::spawn(move || led_thread(col03_for_led, col01_for_led, led_rx));
+        let caps_for_led = wheel_caps.clone();
+        std::thread::spawn(move || led_thread(col03_for_led, col01_for_led, led_rx, caps_for_led));
     }
 
     // Register Ctrl-C handler — sends Shutdown so the LED thread clears all LEDs
@@ -233,7 +239,12 @@ pub fn run_monitor(config: &config::Config, profiles: &[PwsProfile]) -> ! {
 
 /// Owns the HID handles for the process lifetime and drives rev LED animation
 /// at ~30 Hz.  Receives `LedCmd` messages from the monitor thread via channel.
-fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver<LedCmd>) {
+fn led_thread(
+    col03_path: String,
+    col01_path: Option<String>,
+    rx: mpsc::Receiver<LedCmd>,
+    caps: wheel::WheelCaps,
+) {
     let frame = Duration::from_millis(33); // ≈30 Hz
 
     // Load car LED profiles once — embedded in the binary via include_str!.
@@ -277,7 +288,6 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
 
     // ITM OLED state.
     let mut itm_active = false;
-    let mut itm_initialized = false;
     let mut itm_heartbeat_counter: u32 = 0; // fires every 4 frames  (~8 Hz)
     let mut itm_telemetry_counter: u32 = 0; // fires every 15 frames (~2 Hz)
 
@@ -305,7 +315,7 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                             None => eprintln!("  applied (unverified)"),
                         }
                         if has_verified_leds {
-                            send_led_config(d, &prof);
+                            send_led_config(d, &prof, &caps);
                         } else {
                             println!("  [led] no verified LED data — tuning only");
                         }
@@ -352,23 +362,23 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                     last_flag_leds = [0u16; 6]; // force flag update on next frame
 
                     // ── ITM OLED init ──────────────────────────────────────────
-                    if let Some(ref d) = col03 {
-                        let _ = hid::write_report(d, &itm::build_itm_enable());
-                        std::thread::sleep(Duration::from_millis(50));
-                        let _ = hid::write_report(d, &itm::build_itm_page_select(0x01));
-                        std::thread::sleep(Duration::from_millis(50));
-                        for pkt in itm::page1_layout() {
-                            let _ = hid::write_report(d, &pkt);
-                            std::thread::sleep(Duration::from_millis(20));
+                    if caps.itm_oled {
+                        if let Some(ref d) = col03 {
+                            let _ = hid::write_report(d, &itm::build_itm_enable());
+                            std::thread::sleep(Duration::from_millis(50));
+                            let _ = hid::write_report(d, &itm::build_itm_page_select(0x01));
+                            std::thread::sleep(Duration::from_millis(50));
+                            for pkt in itm::page1_layout() {
+                                let _ = hid::write_report(d, &pkt);
+                                std::thread::sleep(Duration::from_millis(20));
+                            }
+                            let _ = hid::write_report(d, &itm::page1_field_text());
+                            itm_active = true;
+                            itm_heartbeat_counter = 0;
+                            itm_telemetry_counter = 0;
+                            println!("  [itm] OLED enabled — Page 1");
                         }
-                        let _ = hid::write_report(d, &itm::page1_field_text());
-                        itm_active = true;
-                        itm_initialized = true;
-                        itm_heartbeat_counter = 0;
-                        itm_telemetry_counter = 0;
-                        println!("  [itm] OLED enabled — Page 1");
                     }
-                    let _ = itm_initialized; // suppress unused warning if col03 is None
                 }
                 Ok(LedCmd::GameExited) => {
                     active = false;
@@ -376,25 +386,26 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                         led::clear_all_leds(d);
                     }
                     // Clear 7-segment display on game exit.
-                    if let Some(ref col01_dev) = col01 {
-                        let blank = display::build_display_report(
-                            display::SEG_BLANK,
-                            display::SEG_BLANK,
-                            display::SEG_BLANK,
-                        );
-                        let _ = hid::write_raw(col01_dev, &blank);
+                    if caps.seg_display {
+                        if let Some(ref col01_dev) = col01 {
+                            let blank = display::build_display_report(
+                                display::SEG_BLANK,
+                                display::SEG_BLANK,
+                                display::SEG_BLANK,
+                            );
+                            let _ = hid::write_raw(col01_dev, &blank);
+                        }
                     }
                     last_leds = [0u16; 9];
                     last_gear = i32::MIN;
                     last_flag_leds = [0u16; 6];
 
                     // Disable OLED on game exit.
-                    if itm_active {
+                    if caps.itm_oled && itm_active {
                         if let Some(ref d) = col03 {
                             let _ = hid::write_report(d, &itm::build_itm_disable());
                         }
                         itm_active = false;
-                        itm_initialized = false;
                         println!("  [itm] OLED disabled");
                     }
                 }
@@ -403,16 +414,18 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                         led::clear_all_leds(d);
                     }
                     // Clear 7-segment display on shutdown.
-                    if let Some(ref col01_dev) = col01 {
-                        let blank = display::build_display_report(
-                            display::SEG_BLANK,
-                            display::SEG_BLANK,
-                            display::SEG_BLANK,
-                        );
-                        let _ = hid::write_raw(col01_dev, &blank);
+                    if caps.seg_display {
+                        if let Some(ref col01_dev) = col01 {
+                            let blank = display::build_display_report(
+                                display::SEG_BLANK,
+                                display::SEG_BLANK,
+                                display::SEG_BLANK,
+                            );
+                            let _ = hid::write_raw(col01_dev, &blank);
+                        }
                     }
                     // Disable OLED on shutdown.
-                    if itm_active {
+                    if caps.itm_oled && itm_active {
                         if let Some(ref d) = col03 {
                             let _ = hid::write_report(d, &itm::build_itm_disable());
                         }
@@ -457,28 +470,31 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                     (static_thresholds.as_slice(), static_flash_threshold)
                 };
 
-                let new_leds = led::compute_rev_leds(
-                    t.rpm,
-                    thresholds,
-                    &palette,
-                    flash_thr,
-                    flash_color_rgb565,
-                    blink_on,
-                );
-                if new_leds != last_leds {
-                    let report = led::build_rev_led_report(&new_leds);
-                    if let Some(ref d) = col03 {
-                        if hid::write_report(d, &report).is_err() {
-                            eprintln!("[led] write failed — reopening handle");
-                            col03 = hid::open_device_by_path(&col03_path).ok();
-                        } else {
-                            last_leds = new_leds;
+                // ── Rev LEDs ──────────────────────────────────────────────────
+                if caps.rev_leds {
+                    let new_leds = led::compute_rev_leds(
+                        t.rpm,
+                        thresholds,
+                        &palette,
+                        flash_thr,
+                        flash_color_rgb565,
+                        blink_on,
+                    );
+                    if new_leds != last_leds {
+                        let report = led::build_rev_led_report(&new_leds);
+                        if let Some(ref d) = col03 {
+                            if hid::write_report(d, &report).is_err() {
+                                eprintln!("[led] write failed — reopening handle");
+                                col03 = hid::open_device_by_path(&col03_path).ok();
+                            } else {
+                                last_leds = new_leds;
+                            }
                         }
                     }
                 }
 
                 // ── Gear display (col01 7-segment) ────────────────────────────
-                if t.gear != last_gear {
+                if caps.seg_display && t.gear != last_gear {
                     if let Some(ref col01_dev) = col01 {
                         let report = display::build_gear_display(t.gear as i8);
                         let _ = hid::write_raw(col01_dev, &report);
@@ -487,28 +503,30 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
                 }
 
                 // ── Flag LEDs (6 flag LEDs on col03) ──────────────────────────
-                let new_flag_leds = match flag_color(t.session_flags) {
-                    Some((color, flash)) => {
-                        if flash && !flag_blink_on {
-                            [0u16; 6]
-                        } else {
-                            [color; 6]
+                if caps.flag_leds {
+                    let new_flag_leds = match flag_color(t.session_flags) {
+                        Some((color, flash)) => {
+                            if flash && !flag_blink_on {
+                                [0u16; 6]
+                            } else {
+                                [color; 6]
+                            }
                         }
+                        None => [0u16; 6],
+                    };
+                    if new_flag_leds != last_flag_leds {
+                        let report = led::build_flag_led_report(&new_flag_leds);
+                        if let Some(ref d) = col03 {
+                            let _ = hid::write_report(d, &report);
+                        }
+                        last_flag_leds = new_flag_leds;
                     }
-                    None => [0u16; 6],
-                };
-                if new_flag_leds != last_flag_leds {
-                    let report = led::build_flag_led_report(&new_flag_leds);
-                    if let Some(ref d) = col03 {
-                        let _ = hid::write_report(d, &report);
-                    }
-                    last_flag_leds = new_flag_leds;
                 }
             }
         }
 
         // ── 3. ITM OLED heartbeat + telemetry ────────────────────────────────
-        if itm_active {
+        if caps.itm_oled && itm_active {
             itm_heartbeat_counter += 1;
             itm_telemetry_counter += 1;
 
@@ -545,60 +563,64 @@ fn led_thread(col03_path: String, col01_path: Option<String>, rx: mpsc::Receiver
 
 /// Send rev LED colors, clear flag LEDs, send button colors + intensities,
 /// then SAVE.  All writes are non-fatal — log and continue on failure.
-fn send_led_config(col03: &hid::FanatecDevice, prof: &PwsProfile) {
+fn send_led_config(col03: &hid::FanatecDevice, prof: &PwsProfile, caps: &wheel::WheelCaps) {
     // ── Rev LEDs ────────────────────────────────────────────────────────────
-    if let Some(ref rev) = prof.rev_led {
-        if !rev.colors.is_empty() {
-            let rgb565: Vec<u16> = rev
-                .colors
-                .iter()
-                .map(|&ci| led::color_index_to_rgb565(ci))
-                .collect();
-            let report = led::build_rev_led_report(&rgb565);
-            if hid::write_report(col03, &report).is_ok() {
-                println!("  [led] rev: {} colors", rgb565.len());
-            } else {
-                eprintln!("  [led] rev write failed (non-fatal)");
+    if caps.rev_leds {
+        if let Some(ref rev) = prof.rev_led {
+            if !rev.colors.is_empty() {
+                let rgb565: Vec<u16> = rev
+                    .colors
+                    .iter()
+                    .map(|&ci| led::color_index_to_rgb565(ci))
+                    .collect();
+                let report = led::build_rev_led_report(&rgb565);
+                if hid::write_report(col03, &report).is_ok() {
+                    println!("  [led] rev: {} colors", rgb565.len());
+                } else {
+                    eprintln!("  [led] rev write failed (non-fatal)");
+                }
             }
         }
     }
 
     // ── Flag LEDs — clear to off; firmware overrides when flags trigger ─────
-    {
+    if caps.flag_leds {
         let report = led::build_flag_led_report(&[]);
         let _ = hid::write_report(col03, &report);
     }
 
     // ── Button LEDs ──────────────────────────────────────────────────────────
-    if let Some(ref buttons) = prof.button_led {
-        if !buttons.is_empty() {
-            // 4-bit (0–15) channel values → RGB565
-            let colors: Vec<u16> = buttons
-                .iter()
-                .map(|b| {
-                    let r = (b.r as u32 * 255 / 15) as u8;
-                    let g = (b.g as u32 * 255 / 15) as u8;
-                    let b8 = (b.b as u32 * 255 / 15) as u8;
-                    led::rgb_to_rgb565(r, g, b8)
-                })
-                .collect();
-            // Stage colors (commit=false), then intensities (commit=true).
-            let color_report = led::build_button_color_report(&colors, false);
-            if hid::write_report(col03, &color_report).is_ok() {
-                // Scale Brigthness 0–15 → intensity 0–7.
-                let intensities: Vec<u8> =
-                    buttons.iter().map(|b| (b.brightness / 2).min(7)).collect();
-                let intensity_report = led::build_button_intensity_report(&intensities, true);
-                if hid::write_report(col03, &intensity_report).is_ok() {
-                    println!("  [led] buttons: {} sent", buttons.len());
+    if caps.button_leds {
+        if let Some(ref buttons) = prof.button_led {
+            if !buttons.is_empty() {
+                // 4-bit (0–15) channel values → RGB565
+                let colors: Vec<u16> = buttons
+                    .iter()
+                    .map(|b| {
+                        let r = (b.r as u32 * 255 / 15) as u8;
+                        let g = (b.g as u32 * 255 / 15) as u8;
+                        let b8 = (b.b as u32 * 255 / 15) as u8;
+                        led::rgb_to_rgb565(r, g, b8)
+                    })
+                    .collect();
+                // Stage colors (commit=false), then intensities (commit=true).
+                let color_report = led::build_button_color_report(&colors, false);
+                if hid::write_report(col03, &color_report).is_ok() {
+                    // Scale Brigthness 0–15 → intensity 0–7.
+                    let intensities: Vec<u8> =
+                        buttons.iter().map(|b| (b.brightness / 2).min(7)).collect();
+                    let intensity_report = led::build_button_intensity_report(&intensities, true);
+                    if hid::write_report(col03, &intensity_report).is_ok() {
+                        println!("  [led] buttons: {} sent", buttons.len());
+                    } else {
+                        eprintln!("  [led] button intensity write failed (non-fatal)");
+                    }
                 } else {
-                    eprintln!("  [led] button intensity write failed (non-fatal)");
+                    eprintln!("  [led] button color write failed (non-fatal)");
                 }
-            } else {
-                eprintln!("  [led] button color write failed (non-fatal)");
             }
         }
-    }
+    } // end if caps.button_leds
 
     // ── SAVE — persist LED config to firmware flash ──────────────────────────
     let save = tuning::build_save_report();

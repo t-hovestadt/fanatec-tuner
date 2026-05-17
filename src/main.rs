@@ -11,6 +11,7 @@ mod monitor;
 mod profile;
 mod sdk;
 mod tuning;
+mod wheel;
 
 use clap::{Parser, Subcommand};
 use hid::REPORT_SIZE;
