@@ -7,15 +7,16 @@ use crate::hid;
 
 /// What outputs this wheel supports.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct WheelCaps {
     pub name: &'static str,
     pub id: u8,
-    pub rev_leds: bool,            // 9 RGB rev LEDs
-    pub flag_leds: bool,           // 6 RGB flag LEDs
-    pub button_leds: bool,         // 12 RGB button LEDs
-    pub seg_display: bool,         // 3-digit 7-segment (col01)
-    pub itm_oled: bool,            // ITM OLED display (FF 05)
+    pub rev_leds: bool,      // 9 RGB rev LEDs
+    pub flag_leds: bool,     // 6 RGB flag LEDs
+    pub button_leds: bool,   // 12 RGB button LEDs
+    pub button_rgb555: bool, // true for BMR — uses RGB555 instead of RGB565
+    pub seg_display: bool,   // 3-digit 7-segment (col01)
+    pub itm_oled: bool,      // ITM OLED display (FF 05)
+    #[allow(dead_code)]
     pub led_protocol: LedProtocol, // which collection drives LEDs
 }
 
@@ -35,6 +36,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: false,
         button_leds: false,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col03,
@@ -45,6 +47,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: false,
         button_leds: false,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col03,
@@ -55,6 +58,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: false,
         button_leds: false,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col03,
@@ -65,6 +69,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: true,
         button_leds: true,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col03,
@@ -75,6 +80,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: true,
         button_leds: true,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col03,
@@ -85,6 +91,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: true,
         button_leds: true,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col03,
@@ -95,6 +102,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: true,
         button_leds: true,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col03,
@@ -106,6 +114,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: true,
         button_leds: true,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col03,
@@ -117,8 +126,22 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: true,
         button_leds: true,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: true,
+        led_protocol: LedProtocol::Col03,
+    },
+    // Synthetic ID for Podium Hub + BMR (Button Module Rally) combo.
+    // BMR uses RGB555 encoding instead of RGB565.
+    WheelCaps {
+        name: "Podium Hub + BMR",
+        id: 121,
+        rev_leds: true,
+        flag_leds: true,
+        button_leds: true,
+        button_rgb555: true,
+        seg_display: true,
+        itm_oled: false,
         led_protocol: LedProtocol::Col03,
     },
     // ── Legacy wheels (col01 LEDs) ───────────────────────────────────────────
@@ -128,6 +151,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: false,
         button_leds: false,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col01,
@@ -138,6 +162,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: false,
         button_leds: false,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col01,
@@ -148,6 +173,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: false,
         button_leds: false,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col01,
@@ -158,6 +184,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: false,
         button_leds: false,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col01,
@@ -168,6 +195,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: false,
         button_leds: false,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col01,
@@ -178,6 +206,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: true,
         flag_leds: false,
         button_leds: false,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: false,
         led_protocol: LedProtocol::Col01,
@@ -189,6 +218,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: false,
         flag_leds: false,
         button_leds: false,
+        button_rgb555: false,
         seg_display: false,
         itm_oled: false,
         led_protocol: LedProtocol::None,
@@ -199,6 +229,7 @@ const KNOWN_WHEELS: &[WheelCaps] = &[
         rev_leds: false,
         flag_leds: false,
         button_leds: false,
+        button_rgb555: false,
         seg_display: false,
         itm_oled: false,
         led_protocol: LedProtocol::None,
@@ -220,6 +251,7 @@ pub fn default_caps() -> WheelCaps {
         rev_leds: true,
         flag_leds: true,
         button_leds: true,
+        button_rgb555: false,
         seg_display: true,
         itm_oled: true,
         led_protocol: LedProtocol::Col03,
@@ -228,10 +260,10 @@ pub fn default_caps() -> WheelCaps {
 
 /// Re-detect the wheel after a USB disconnect/reconnect.
 ///
-/// Waits 2 seconds for the new wheel to enumerate on USB, then runs `detect`.
-/// Logs the wheel swap (old → new) and any capability changes.
+/// Sleeps 2 seconds for USB re-enumeration, then probes protobuf reports.
+/// Logs the swap (old → new name) and any gained/lost capability changes.
 pub fn redetect(col03_path: &str, old: &WheelCaps) -> WheelCaps {
-    println!("[wheel] USB disconnect detected — re-probing...");
+    println!("[wheel] Re-probing after disconnect...");
     std::thread::sleep(std::time::Duration::from_secs(2));
 
     let new = detect(col03_path);
@@ -245,17 +277,16 @@ pub fn redetect(col03_path: &str, old: &WheelCaps) -> WheelCaps {
         println!("[wheel] Reconnected: {} (ID {})", new.name, new.id);
     }
 
-    let changes = [
+    let checks: &[(&str, bool, bool)] = &[
         ("rev-LEDs", old.rev_leds, new.rev_leds),
         ("flag-LEDs", old.flag_leds, new.flag_leds),
         ("button-LEDs", old.button_leds, new.button_leds),
         ("7-segment", old.seg_display, new.seg_display),
         ("ITM-OLED", old.itm_oled, new.itm_oled),
     ];
-    for (name, was, now) in changes {
+    for &(name, was, now) in checks {
         if was != now {
-            let arrow = if now { "gained" } else { "lost" };
-            println!("[wheel] {arrow} {name}");
+            println!("[wheel]   {} {}", if now { "+" } else { "-" }, name);
         }
     }
 

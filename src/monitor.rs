@@ -291,8 +291,51 @@ fn led_thread(
     let mut itm_heartbeat_counter: u32 = 0; // fires every 4 frames  (~8 Hz)
     let mut itm_telemetry_counter: u32 = 0; // fires every 15 frames (~2 Hz)
 
+    // Device health monitoring.
+    let mut device_alive = true;
+    let mut backoff_start: Option<Instant> = None;
+    let mut consecutive_write_failures: u32 = 0;
+    const DISCONNECT_THRESHOLD: u32 = 3; // 3 failures at 30Hz = ~100ms to detect
+    const BACKOFF_SECS: u64 = 3; // wait 3s between reconnect attempts
+
     loop {
         let tick_start = Instant::now();
+
+        // ── 0. Device health / USB backoff ────────────────────────────────────
+        if !device_alive {
+            // Still in backoff window — sleep and retry later.
+            if let Some(ref started) = backoff_start {
+                if started.elapsed() < Duration::from_secs(BACKOFF_SECS) {
+                    std::thread::sleep(frame);
+                    continue;
+                }
+            }
+            // Backoff expired — attempt reconnect.
+            col03 = hid::open_device_by_path(&col03_path).ok();
+            if col03.is_some() {
+                let new_caps = wheel::redetect(&col03_path, &caps);
+                if caps.itm_oled && !new_caps.itm_oled && itm_active {
+                    itm_active = false;
+                    println!("[itm] OLED no longer available");
+                }
+                col01 = col01_path
+                    .as_deref()
+                    .and_then(|p| hid::open_device_by_path(p).ok());
+                last_leds = [0u16; 9];
+                last_flag_leds = [0u16; 6];
+                last_gear = i32::MIN;
+                consecutive_write_failures = 0;
+                caps = new_caps;
+                device_alive = true;
+                backoff_start = None;
+                println!("[led] Device reconnected");
+            } else {
+                // Still not available — reset backoff timer and wait again.
+                backoff_start = Some(Instant::now());
+                std::thread::sleep(frame);
+                continue;
+            }
+        }
 
         // ── 1. Drain command channel (non-blocking) ───────────────────────────
         loop {
@@ -484,30 +527,19 @@ fn led_thread(
                         let report = led::build_rev_led_report(&new_leds);
                         if let Some(ref d) = col03 {
                             if hid::write_report(d, &report).is_err() {
-                                eprintln!("[led] write failed — wheel may have been swapped");
-                                col03 = hid::open_device_by_path(&col03_path).ok();
-
-                                // Re-detect wheel capabilities after reconnect.
-                                let new_caps = wheel::redetect(&col03_path, &caps);
-
-                                // Clean up ITM state if new wheel lost OLED support.
-                                if caps.itm_oled && !new_caps.itm_oled && itm_active {
-                                    itm_active = false;
-                                    println!("[itm] OLED no longer available — disabled");
+                                consecutive_write_failures += 1;
+                                if consecutive_write_failures >= DISCONNECT_THRESHOLD {
+                                    eprintln!(
+                                        "[led] {} consecutive write failures — device disconnected",
+                                        consecutive_write_failures
+                                    );
+                                    device_alive = false;
+                                    backoff_start = Some(Instant::now());
+                                    col03 = None;
+                                    col01 = None;
                                 }
-
-                                // Reset all output tracking so next frame triggers fresh writes.
-                                last_leds = [0u16; 9];
-                                last_flag_leds = [0u16; 6];
-                                last_gear = i32::MIN;
-
-                                // Reopen col01 in case the gear-display hub changed.
-                                col01 = col01_path
-                                    .as_deref()
-                                    .and_then(|p| hid::open_device_by_path(p).ok());
-
-                                caps = new_caps;
                             } else {
+                                consecutive_write_failures = 0;
                                 last_leds = new_leds;
                             }
                         }
@@ -614,14 +646,19 @@ fn send_led_config(col03: &hid::FanatecDevice, prof: &PwsProfile, caps: &wheel::
     if caps.button_leds {
         if let Some(ref buttons) = prof.button_led {
             if !buttons.is_empty() {
-                // 4-bit (0–15) channel values → RGB565
+                // 4-bit (0–15) channel values → RGB565 or RGB555 (BMR).
+                let convert_btn: fn(u8, u8, u8) -> u16 = if caps.button_rgb555 {
+                    led::rgb_to_rgb555
+                } else {
+                    led::rgb_to_rgb565
+                };
                 let colors: Vec<u16> = buttons
                     .iter()
                     .map(|b| {
                         let r = (b.r as u32 * 255 / 15) as u8;
                         let g = (b.g as u32 * 255 / 15) as u8;
                         let b8 = (b.b as u32 * 255 / 15) as u8;
-                        led::rgb_to_rgb565(r, g, b8)
+                        convert_btn(r, g, b8)
                     })
                     .collect();
                 // Stage colors (commit=false), then intensities (commit=true).

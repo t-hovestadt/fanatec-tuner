@@ -32,6 +32,15 @@ pub const fn rgb_to_rgb565(r: u8, g: u8, b: u8) -> u16 {
     (b5 << 11) | (g6 << 5) | r5
 }
 
+/// Convert 24-bit RGB to 15-bit RGB555 for the Podium Button Module Rally (BMR).
+/// Layout: 0RRRRRGGGGGBBBBB — bit 15 always 0.
+pub const fn rgb_to_rgb555(r: u8, g: u8, b: u8) -> u16 {
+    let r5 = (r as u16 >> 3) & 0x1F;
+    let g5 = (g as u16 >> 3) & 0x1F;
+    let b5 = (b as u16 >> 3) & 0x1F;
+    (r5 << 10) | (g5 << 5) | b5
+}
+
 fn led_header(subcmd: u8) -> [u8; REPORT_SIZE] {
     let mut buf = [0u8; REPORT_SIZE];
     buf[0] = LED_REPORT_ID;
