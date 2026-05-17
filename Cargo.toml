@@ -1,6 +1,6 @@
 [package]
 name = "fanatec-tuner"
-version = "0.1.1"
+version = "0.3.2"
 edition = "2021"
 description = "Automatic Fanatec tuning profile loader for sim racing"
 repository = "https://github.com/t-hovestadt/fanatec-tuner"
