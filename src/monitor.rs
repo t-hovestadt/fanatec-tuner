@@ -243,7 +243,7 @@ fn led_thread(
     col03_path: String,
     col01_path: Option<String>,
     rx: mpsc::Receiver<LedCmd>,
-    caps: wheel::WheelCaps,
+    mut caps: wheel::WheelCaps,
 ) {
     let frame = Duration::from_millis(33); // ≈30 Hz
 
@@ -253,7 +253,7 @@ fn led_thread(
 
     // Persistent handles — reopen col03 on write failure.
     let mut col03 = hid::open_device_by_path(&col03_path).ok();
-    let col01 = col01_path
+    let mut col01 = col01_path
         .as_deref()
         .and_then(|p| hid::open_device_by_path(p).ok());
 
@@ -484,8 +484,29 @@ fn led_thread(
                         let report = led::build_rev_led_report(&new_leds);
                         if let Some(ref d) = col03 {
                             if hid::write_report(d, &report).is_err() {
-                                eprintln!("[led] write failed — reopening handle");
+                                eprintln!("[led] write failed — wheel may have been swapped");
                                 col03 = hid::open_device_by_path(&col03_path).ok();
+
+                                // Re-detect wheel capabilities after reconnect.
+                                let new_caps = wheel::redetect(&col03_path, &caps);
+
+                                // Clean up ITM state if new wheel lost OLED support.
+                                if caps.itm_oled && !new_caps.itm_oled && itm_active {
+                                    itm_active = false;
+                                    println!("[itm] OLED no longer available — disabled");
+                                }
+
+                                // Reset all output tracking so next frame triggers fresh writes.
+                                last_leds = [0u16; 9];
+                                last_flag_leds = [0u16; 6];
+                                last_gear = i32::MIN;
+
+                                // Reopen col01 in case the gear-display hub changed.
+                                col01 = col01_path
+                                    .as_deref()
+                                    .and_then(|p| hid::open_device_by_path(p).ok());
+
+                                caps = new_caps;
                             } else {
                                 last_leds = new_leds;
                             }

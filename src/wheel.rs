@@ -226,6 +226,42 @@ pub fn default_caps() -> WheelCaps {
     }
 }
 
+/// Re-detect the wheel after a USB disconnect/reconnect.
+///
+/// Waits 2 seconds for the new wheel to enumerate on USB, then runs `detect`.
+/// Logs the wheel swap (old → new) and any capability changes.
+pub fn redetect(col03_path: &str, old: &WheelCaps) -> WheelCaps {
+    println!("[wheel] USB disconnect detected — re-probing...");
+    std::thread::sleep(std::time::Duration::from_secs(2));
+
+    let new = detect(col03_path);
+
+    if new.id != old.id {
+        println!(
+            "[wheel] Swapped: {} (ID {}) → {} (ID {})",
+            old.name, old.id, new.name, new.id
+        );
+    } else {
+        println!("[wheel] Reconnected: {} (ID {})", new.name, new.id);
+    }
+
+    let changes = [
+        ("rev-LEDs", old.rev_leds, new.rev_leds),
+        ("flag-LEDs", old.flag_leds, new.flag_leds),
+        ("button-LEDs", old.button_leds, new.button_leds),
+        ("7-segment", old.seg_display, new.seg_display),
+        ("ITM-OLED", old.itm_oled, new.itm_oled),
+    ];
+    for (name, was, now) in changes {
+        if was != now {
+            let arrow = if now { "gained" } else { "lost" };
+            println!("[wheel] {arrow} {name}");
+        }
+    }
+
+    new
+}
+
 /// Attempt to detect the connected wheel type by reading col03 input reports
 /// and parsing protobuf fields for the wheel ID.
 ///
